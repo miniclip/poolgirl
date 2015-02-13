@@ -8,8 +8,8 @@
          code_change/3]).
 
 % external api
--export([checkout/1, checkin/2, transaction/2, start_link/1, start_link/2, status/1,
-         spin/3, child_spec/2, child_spec/3]).
+-export([checkout/1, checkin/2, transaction/2, start_link/1,
+         start_link/2, status/1, spin/3, child_spec/2, child_spec/3]).
 
 % Copied from gen:start_ret/0
 -type start_ret() :: {'ok', pid()} | 'ignore' | {'error', term()}.
@@ -18,10 +18,10 @@
     Name :: atom().
 
 -record(state, {
-	name,
+    name,
     supervisor :: pid(),
     workers :: [tuple(reference(), pid())],
-	worker_module = undefined :: atom(),
+    worker_module = undefined :: atom(),
     size = 5 :: non_neg_integer()
 }).
 
@@ -91,12 +91,14 @@ init([{size, Size} | Rest], WorkerArgs, State) when is_integer(Size) ->
     init(Rest, WorkerArgs, State#state{size = Size});
 init([_ | Rest], WorkerArgs, State) ->
     init(Rest, WorkerArgs, State);
-init([], WorkerArgs, #state{name = PoolName, size = Size, worker_module = Mod} = State) ->
+init([], WorkerArgs, #state{name = PoolName,
+                            size = Size,
+                            worker_module = Mod} = State) ->
     % create the pg2 group
     ok = pg2:create(PoolName),
-	% start up the worker's supervisor and spin the requested number of workers
+    % start up the worker's supervisor and spin the requested number of workers
     {ok, Sup} = poolgirl_sup:start_link(Mod, WorkerArgs),
-	Workers = populate(Size, Sup, PoolName),
+    Workers = populate(Size, Sup, PoolName),
     {ok, State#state{supervisor = Sup, workers = Workers}}.
 
 handle_call(status, _From, #state{supervisor = Sup} = State) ->
@@ -157,7 +159,7 @@ code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 %%
-%%	internal
+%%  internal
 %%
 
 start_pool(StartFun, PoolArgs, WorkerArgs) ->
@@ -181,7 +183,7 @@ populate(N, Sup, PoolName) ->
 populate(0, _Sup, _PoolName, Acc) ->
     Acc;
 populate(N, Sup, PoolName, Acc) ->
-	Pid = new_worker(Sup),
+    Pid = new_worker(Sup),
     % we want a message if the worker dies
     Ref = erlang:monitor(process, Pid),
     % join the worker to the pg2 group
