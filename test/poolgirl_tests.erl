@@ -29,6 +29,9 @@ pool_test_() ->
             },
             {<<"Pool worker spin down">>,
                 fun pool_worker_spin_down/0
+            },
+            {<<"Pool only recruits local workers">>,
+                fun pool_only_local_workers/0
             }
         ]
     }.
@@ -73,6 +76,12 @@ pool_worker_spin_down() ->
     poolgirl:spin(down, Pool, 2),
     ?assertEqual({ready, 2, 0, 0}, poolgirl:status(Pool)),
     ok = pool_call(Pool, stop).
+
+pool_only_local_workers() ->
+    {ok, Pid} = new_pool(5, 2),
+    Worker = poolgirl:checkout(Pid),
+    ?assertEqual(node(), node(Worker)),
+    ok = pool_call(Pid, stop).
 
 new_pool(Size, MaxOverflow) ->
     poolgirl:start_link([{name, {local, poolgirl_test}},

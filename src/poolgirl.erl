@@ -40,7 +40,13 @@ child_spec(PoolId, PoolArgs, WorkerArgs) ->
 
 -spec checkout(Pool :: pool()) -> pid().
 checkout(Pool) ->
-    pg2:get_closest_pid(Pool).
+    Pid = pg2:get_closest_pid(Pool),
+    Node = node(),
+    % only allow local pids
+    case node(Pid) of
+        Node -> Pid;
+        _ -> checkout(Pool)
+    end.
 
 -spec checkin(Pool :: pool(), Worker :: pid()) -> ok.
 checkin(_Pool, Worker) when is_pid(Worker) -> ok.
