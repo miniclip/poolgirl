@@ -39,7 +39,7 @@ pool_test_() ->
 %% Tell a worker to exit and await its impending doom.
 kill_worker(Pid) ->
     erlang:monitor(process, Pid),
-    pool_call(Pid, die),
+    exit(Pid, kill),
     receive
         {'DOWN', _, process, Pid, _} ->
             ok
@@ -57,6 +57,8 @@ worker_death() ->
     {ok, Pid} = new_pool(5, 2),
     Worker = poolgirl:checkout(Pid),
     kill_worker(Worker),
+    %% a little pause to allow the dust to settle after a death
+    timer:sleep(1000),
     ?assertEqual(5, length(pool_call(Pid, get_avail_workers))),
     ok = pool_call(Pid, stop).
 
