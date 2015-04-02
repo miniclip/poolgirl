@@ -47,48 +47,48 @@ kill_worker(Pid) ->
 
 pool_startup() ->
     %% Check basic pool operation.
-    {ok, Pid} = new_pool(10, 5),
-    ?assertEqual(10, length(pool_call(Pid, get_avail_workers))),
+    {ok, Pid} = new_pool(10),
+    ?assertEqual(10, length(pool_call(Pid, get_workers))),
     poolgirl:checkout(Pid),
-    ?assertEqual(10, length(pool_call(Pid, get_avail_workers))),
+    ?assertEqual(10, length(pool_call(Pid, get_workers))),
     ok = pool_call(Pid, stop).
 
 worker_death() ->
-    {ok, Pid} = new_pool(5, 2),
+    {ok, Pid} = new_pool(5),
     Worker = poolgirl:checkout(Pid),
     kill_worker(Worker),
     %% a little pause to allow the dust to settle after a death
     timer:sleep(1000),
-    ?assertEqual(5, length(pool_call(Pid, get_avail_workers))),
+    ?assertEqual(5, length(pool_call(Pid, get_workers))),
     ok = pool_call(Pid, stop).
 
 pool_returns_status() ->
-    {ok, Pool} = new_pool(2, 0),
-    ?assertEqual({ready, 2, 0, 0}, poolgirl:status(Pool)),
+    {ok, Pool} = new_pool(2),
+    ?assertEqual({ready, 2}, poolgirl:status(Pool)),
     ok = pool_call(Pool, stop).
 
 pool_worker_spin_up() ->
-    {ok, Pool} = new_pool(2, 0),
+    {ok, Pool} = new_pool(2),
     poolgirl:spin(up, Pool, 2),
-    ?assertEqual({ready, 4, 0, 0}, poolgirl:status(Pool)),
+    ?assertEqual({ready, 4}, poolgirl:status(Pool)),
     ok = pool_call(Pool, stop).
 
 pool_worker_spin_down() ->
-    {ok, Pool} = new_pool(4, 0),
+    {ok, Pool} = new_pool(4),
     poolgirl:spin(down, Pool, 2),
-    ?assertEqual({ready, 2, 0, 0}, poolgirl:status(Pool)),
+    ?assertEqual({ready, 2}, poolgirl:status(Pool)),
     ok = pool_call(Pool, stop).
 
 pool_only_local_workers() ->
-    {ok, Pid} = new_pool(5, 2),
+    {ok, Pid} = new_pool(5),
     Worker = poolgirl:checkout(Pid),
     ?assertEqual(node(), node(Worker)),
     ok = pool_call(Pid, stop).
 
-new_pool(Size, MaxOverflow) ->
+new_pool(Size) ->
     poolgirl:start_link([{name, {local, poolgirl_test}},
                         {worker_module, poolgirl_test_worker},
-                        {size, Size}, {max_overflow, MaxOverflow}]),
+                        {size, Size}]),
     {ok, poolgirl_test}.
 
 pool_call(ServerRef, Request) ->
