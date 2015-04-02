@@ -149,7 +149,7 @@ handle_info({'DOWN', _Reference, process, Pid, _Reason},
     % spin up a new worker to replace the one that just died
     NewPid = new_worker(Sup),
     % we want a message if the worker dies
-    NewRef = erlang:monitor(process, Pid),
+    NewRef = erlang:monitor(process, NewPid),
     NewWorker = {NewRef, NewPid},
     % join the worker to the pg2 group
     ok = pg2:join(PoolName, NewPid),
