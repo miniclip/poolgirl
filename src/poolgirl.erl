@@ -125,7 +125,8 @@ handle_call({spin_down, N}, _From, #state{supervisor = Sup,
                   end, Victims),
     {reply, ok, State#state{workers = Workers -- Victims}};
 handle_call(get_workers, _From, #state{supervisor = Sup} = State) ->
-    WorkerList = supervisor:which_children(Sup),
+    WorkerList = [Pid || {undefined, Pid, worker, _} <-
+                            supervisor:which_children(Sup)],
     {reply, WorkerList, State};
 handle_call(stop, _From, State) ->
     {stop, normal, ok, State};
