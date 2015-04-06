@@ -4,6 +4,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased][unreleased]
 
+## [1.0.3] - 6-04-2015
+### Added
+   + get_workers API method, returns list of worker pids
+### Changed
+### Fixed
+
 ## [1.0.2] - 2-04-2015
 ### Added
 ### Changed
