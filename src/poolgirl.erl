@@ -8,7 +8,7 @@
          code_change/3]).
 
 % external api
--export([checkout/1, checkin/2, transaction/2, start_link/1,
+-export([checkout/1, checkin/2, transaction/2, get_workers/1, start_link/1,
          start_link/2, status/1, spin/3, child_spec/2, child_spec/3]).
 
 % Copied from gen:start_ret/0
@@ -55,11 +55,7 @@ checkin(_Pool, Worker) when is_pid(Worker) -> ok.
     -> any().
 transaction(Pool, Fun) ->
     Worker = poolgirl:checkout(Pool),
-    try
-        Fun(Worker)
-    after
-        ok = poolgirl:checkin(Pool, Worker)
-    end.
+    catch Fun(Worker).
 
 -spec status(Pool :: pool()) -> {atom(), integer()}.
 status(Pool) ->
@@ -81,6 +77,10 @@ start_link(PoolArgs)  ->
     -> start_ret().
 start_link(PoolArgs, WorkerArgs)  ->
     start_pool(start_link, PoolArgs, WorkerArgs).
+
+-spec get_workers(Pool :: pool()) -> list().
+get_workers(Pool) ->
+    gen_server:call(Pool, get_workers).
 
 init({PoolArgs, WorkerArgs}) ->
     init(PoolArgs, WorkerArgs, #state{}).
@@ -108,7 +108,7 @@ init([], WorkerArgs, #state{name = PoolName,
     {ok, State#state{supervisor = Sup, workers = Workers}}.
 
 handle_call(status, _From, #state{supervisor = Sup} = State) ->
-    {reply, {ready, length(supervisor:which_children(Sup)), 0, 0}, State};
+    {reply, {ready, length(supervisor:which_children(Sup))}, State};
 handle_call({spin_up, N}, _From, #state{name = PoolName,
                                         size = Size,
                                         supervisor = Sup,
@@ -124,11 +124,9 @@ handle_call({spin_down, N}, _From, #state{supervisor = Sup,
                     kill_worker(Sup, WorkerPid)
                   end, Victims),
     {reply, ok, State#state{workers = Workers -- Victims}};
-handle_call(get_avail_workers, _From, #state{supervisor = Sup} = State) ->
-    Workers = supervisor:which_children(Sup),
-    {reply, Workers, State};
-handle_call(get_all_workers, _From, #state{supervisor = Sup} = State) ->
-    WorkerList = supervisor:which_children(Sup),
+handle_call(get_workers, _From, #state{supervisor = Sup} = State) ->
+    WorkerList = [Pid || {undefined, Pid, worker, _} <-
+                            supervisor:which_children(Sup)],
     {reply, WorkerList, State};
 handle_call(stop, _From, State) ->
     {stop, normal, ok, State};
