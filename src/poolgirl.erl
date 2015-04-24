@@ -38,15 +38,22 @@ child_spec(PoolId, PoolArgs, WorkerArgs) ->
     {PoolId, {poolgirl, start_link, [PoolArgs, WorkerArgs]},
      permanent, 5000, worker, [poolgirl]}.
 
--spec checkout(Pool :: pool()) -> pid().
-checkout(Pool) ->
-    Pid = pg2:get_closest_pid(Pool),
+-spec ensure_valid_pid({error, {no_process | no_such_group, atom()}} |
+                       pid(), atom()) -> no_process | pid().
+ensure_valid_pid({error, {no_process, _}}, _) -> no_process;
+ensure_valid_pid({error, {no_such_group, _}}, _) -> no_process;
+ensure_valid_pid(Pid, Pool) when is_pid(Pid) ->
     Node = node(),
     % only allow local pids
     case node(Pid) of
         Node -> Pid;
         _ -> checkout(Pool)
     end.
+
+-spec checkout(Pool :: pool()) -> no_process | pid().
+checkout(Pool) ->
+    Pid = pg2:get_closest_pid(Pool),
+    ensure_valid_pid(Pid, Pool).
 
 -spec checkin(Pool :: pool(), Worker :: pid()) -> ok.
 checkin(_Pool, Worker) when is_pid(Worker) -> ok.

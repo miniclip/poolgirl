@@ -4,6 +4,13 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased][unreleased]
 
+## [1.0.4] - 24-04-2015
+### Added
+### Changed
+### Fixed
+   + Correct handling of transaction/checkout upon worker pool
+     depletion
+
 ## [1.0.3] - 6-04-2015
 ### Added
    + get_workers API method, returns list of worker pids
