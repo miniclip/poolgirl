@@ -17,6 +17,12 @@ handle_call(die, _From, State) ->
 handle_call(_Event, _From, State) ->
     {reply, ok, State}.
 
+crash_if_not_binary(Bin) when is_binary(Bin) ->
+    ok.
+
+handle_cast({test_crash, Bin}, State) ->
+    ok = crash_if_not_binary(Bin),
+    {noreply, State};
 handle_cast(_Event, State) ->
     {noreply, State}.
 

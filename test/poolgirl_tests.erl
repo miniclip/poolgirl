@@ -32,6 +32,9 @@ pool_test_() ->
             },
             {<<"Pool only recruits local workers">>,
                 fun pool_only_local_workers/0
+            },
+            {<<"Pool behaves upon worker depletion">>,
+                fun pool_worker_depletion/0
             }
         ]
     }.
@@ -80,10 +83,21 @@ pool_worker_spin_down() ->
     ok = pool_call(Pool, stop).
 
 pool_only_local_workers() ->
-    {ok, Pid} = new_pool(5),
-    Worker = poolgirl:checkout(Pid),
+    {ok, Pool} = new_pool(5),
+    Worker = poolgirl:checkout(Pool),
     ?assertEqual(node(), node(Worker)),
-    ok = pool_call(Pid, stop).
+    ok = pool_call(Pool, stop).
+
+pool_worker_depletion() ->
+    {ok, Pool} = new_pool(5),
+    lists:foreach(fun(_E) ->
+                    poolgirl:transaction(Pool,
+                        fun(Worker) ->
+                            gen_server:cast(Worker, {test_crash, atom})
+                        end)
+                  end, lists:seq(0, 50)),
+    ?assertEqual({ready, 5}, poolgirl:status(Pool)),
+    ok = pool_call(Pool, stop).
 
 new_pool(Size) ->
     poolgirl:start_link([{name, {local, poolgirl_test}},
