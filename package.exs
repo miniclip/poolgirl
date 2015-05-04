@@ -11,9 +11,9 @@ defmodule Poolgirl.Mixfile do
   end
 
   defp package do
-    [files: ~w(src rebar.config README.md LICENSE UNLICENSE VERSION),
-     contributors: ["Luis Rascao"],
-     licenses: ["Unlicense", "Apache 2.0"],
-     links: %{"GitHub" => "https://github.com/lrascao/poolgirl"}]
+    [files: ~w(src rebar.config README.md CHANGELOG.md LICENSE VERSION),
+     contributors: ["Luis Rascão"],
+     licenses: ["MIT"],
+     links: %{"GitHub" => "https://github.com/MiniclipPortugal/poolgirl"}]
   end
 end
