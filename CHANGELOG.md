@@ -4,6 +4,13 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased][unreleased]
 
+## [1.0.5] - 04-05-2015
+### Added
+    + README file
+### Changed
+    + Open Source license is now MIT
+### Fixed
+
 ## [1.0.4] - 24-04-2015
 ### Added
 ### Changed
