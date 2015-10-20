@@ -52,7 +52,7 @@ ensure_valid_pid(Pid, Pool) when is_pid(Pid) ->
 
 -spec checkout(Pool :: pool()) -> no_process | pid().
 checkout(Pool) ->
-    Pid = pg2:get_closest_pid(Pool),
+    Pid = poolgirl_pg2:get_closest_pid(Pool),
     ensure_valid_pid(Pid, Pool).
 
 -spec checkin(Pool :: pool(), Worker :: pid()) -> ok.
@@ -108,7 +108,7 @@ init([], WorkerArgs, #state{name = PoolName,
                             size = Size,
                             worker_module = Mod} = State) ->
     % create the pg2 group
-    ok = pg2:create(PoolName),
+    ok = poolgirl_pg2:create(PoolName),
     % start up the worker's supervisor and spin the requested number of workers
     {ok, Sup} = poolgirl_sup:start_link(Mod, WorkerArgs),
     Workers = populate(Size, Sup, PoolName),
@@ -150,14 +150,14 @@ handle_info({'DOWN', _Reference, process, Pid, _Reason},
            workers = Workers} = State) ->
 
     % remove the worker from the pg2 group
-    ok = pg2:leave(PoolName, Pid),
+    ok = poolgirl_pg2:leave(PoolName, Pid),
     % spin up a new worker to replace the one that just died
     NewPid = new_worker(Sup),
     % we want a message if the worker dies
     NewRef = erlang:monitor(process, NewPid),
     NewWorker = {NewRef, NewPid},
     % join the worker to the pg2 group
-    ok = pg2:join(PoolName, NewPid),
+    ok = poolgirl_pg2:join(PoolName, NewPid),
     {noreply, State#state{workers = Workers ++ [NewWorker]}};
 handle_info(_Info, State) ->
     {noreply, State}.
@@ -198,5 +198,5 @@ populate(N, Sup, PoolName, Acc) ->
     % we want a message if the worker dies
     Ref = erlang:monitor(process, Pid),
     % join the worker to the pg2 group
-    ok = pg2:join(PoolName, Pid),
+    ok = poolgirl_pg2:join(PoolName, Pid),
     populate(N-1, Sup, PoolName, Acc ++ [{Ref, Pid}]).
