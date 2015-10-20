@@ -4,6 +4,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased][unreleased]
 
+## [1.1.0] - 20-10-2015
+### Added
+    + pg2 local module, does no global multi calls
+### Changed
+### Fixed
+
 ## [1.0.5] - 04-05-2015
 ### Added
     + README file
