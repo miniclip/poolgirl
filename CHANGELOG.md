@@ -4,6 +4,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased][unreleased]
 
+## [1.1.1] - 20-10-2015
+### Added
+    + pg2 local module renamed to poolgirl_pg2
+### Changed
+### Fixed
+
 ## [1.1.0] - 20-10-2015
 ### Added
     + pg2 local module, does no global multi calls
