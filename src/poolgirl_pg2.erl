@@ -16,7 +16,7 @@
 %%
 %% %CopyrightEnd%
 %%
--module(pg2).
+-module(poolgirl_pg2).
 
 -export([create/1, delete/1, join/2, leave/2]).
 -export([get_members/1, get_local_members/1]).
@@ -181,7 +181,7 @@ handle_call({delete, Name}, _From, S) ->
     {reply, ok, S};
 handle_call(Request, From, S) ->
     error_logger:warning_msg("The pg2 server received an unexpected message:\n"
-                             "handle_call(~p, ~p, _)\n", 
+                             "handle_call(~p, ~p, _)\n",
                              [Request, From]),
     {noreply, S}.
 
@@ -259,7 +259,7 @@ delete_group(Name) ->
 member_died(Ref) ->
     [{{ref, Ref}, Pid}] = ets:lookup(pg2_table, {ref, Ref}),
     Names = member_groups(Pid),
-    _ = [leave_group(Name, P) || 
+    _ = [leave_group(Name, P) ||
             Name <- Names,
             P <- member_in_group(Pid, Name)],
     %% Kept for backward compatibility with links. Can be removed, eventually.
@@ -268,7 +268,7 @@ member_died(Ref) ->
     ok.
 
 join_group(Name, Pid) ->
-    Ref_Pid = {ref, Pid}, 
+    Ref_Pid = {ref, Pid},
     try _ = ets:update_counter(pg2_table, Ref_Pid, {4, +1}), true
     catch _:_ ->
             {RPid, Ref} = do_monitor(Pid),
@@ -288,7 +288,7 @@ leave_group(Name, Pid) ->
     Member_Name_Pid = {member, Name, Pid},
     try ets:update_counter(pg2_table, Member_Name_Pid, {2, -1}) of
         N ->
-            if 
+            if
                 N =:= 0 ->
                     true = ets:delete(pg2_table, {pid, Pid, Name}),
                     _ = [ets:delete(pg2_table, {local_member, Name, Pid}) ||
@@ -297,7 +297,7 @@ leave_group(Name, Pid) ->
                 true ->
                     ok
             end,
-            Ref_Pid = {ref, Pid}, 
+            Ref_Pid = {ref, Pid},
             case ets:update_counter(pg2_table, Ref_Pid, {4, -1}) of
                 0 ->
                     [{Ref_Pid,RPid,Ref,0}] = ets:lookup(pg2_table, Ref_Pid),
@@ -316,12 +316,12 @@ all_members() ->
     [[G, group_members(G)] || G <- all_groups()].
 
 group_members(Name) ->
-    [P || 
+    [P ||
         [P, N] <- ets:match(pg2_table, {{member, Name, '$1'},'$2'}),
         _ <- lists:seq(1, N)].
 
 local_group_members(Name) ->
-    [P || 
+    [P ||
         [Pid] <- ets:match(pg2_table, {{local_member, Name, '$1'}}),
         P <- member_in_group(Pid, Name)].
 
@@ -360,9 +360,9 @@ do_monitor(Pid) ->
             %% Assume the node is still up
             {Pid, erlang:monitor(process, Pid)};
         false ->
-            F = fun() -> 
+            F = fun() ->
                         Ref = erlang:monitor(process, Pid),
-                        receive 
+                        receive
                             {'DOWN', Ref, process, Pid, _Info} ->
                                 exit(normal)
                         end
