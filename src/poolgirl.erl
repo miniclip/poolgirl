@@ -20,7 +20,7 @@
 -record(state, {
     name,
     supervisor :: pid(),
-    workers :: [tuple(reference(), pid())],
+    workers :: [{reference(), pid()}],
     worker_module = undefined :: atom(),
     size = 5 :: non_neg_integer()
 }).
