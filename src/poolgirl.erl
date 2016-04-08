@@ -9,7 +9,8 @@
 
 % external api
 -export([checkout/1, checkin/2, transaction/2, get_workers/1, start_link/1,
-         start_link/2, status/1, spin/3, child_spec/2, child_spec/3]).
+         start_link/2, status/1, spin/3, child_spec/2, child_spec/3,
+         stop/1]).
 
 % Copied from gen:start_ret/0
 -type start_ret() :: {'ok', pid()} | 'ignore' | {'error', term()}.
@@ -84,6 +85,10 @@ start_link(PoolArgs)  ->
     -> start_ret().
 start_link(PoolArgs, WorkerArgs)  ->
     start_pool(start_link, PoolArgs, WorkerArgs).
+
+-spec stop(Pool :: pool()) -> ok.
+stop(Pool) ->
+    gen_server:call(Pool, stop).
 
 -spec get_workers(Pool :: pool()) -> list().
 get_workers(Pool) ->
