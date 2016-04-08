@@ -26,6 +26,7 @@ REBAR=$(shell which rebar)
 .PHONY: all compile clean dialyze rebuild test
 
 all: compile
+travis: test
 
 # =============================================================================
 # Rules to build the system
@@ -50,7 +51,7 @@ dialyze: $(DEPS_PLT) compile
 		-r ./ebin \
 		--plt $(DEPS_PLT)
 
-test:
+test: compile
 	$(REBAR) eunit
 
 clean:
