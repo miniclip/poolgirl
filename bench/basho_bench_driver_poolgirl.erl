@@ -7,6 +7,7 @@
 -record(state, { name = undefined }).
 
 init() ->
+    application:ensure_all_started(poolgirl),
     ok.
 
 new(Id) ->

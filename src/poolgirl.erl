@@ -39,22 +39,12 @@ child_spec(PoolId, PoolArgs, WorkerArgs) ->
     {PoolId, {poolgirl, start_link, [PoolArgs, WorkerArgs]},
      permanent, 5000, worker, [poolgirl]}.
 
--spec ensure_valid_pid({error, {no_process | no_such_group, atom()}} |
-                       pid(), atom()) -> no_process | pid().
-ensure_valid_pid({error, {no_process, _}}, _) -> no_process;
-ensure_valid_pid({error, {no_such_group, _}}, _) -> no_process;
-ensure_valid_pid(Pid, Pool) when is_pid(Pid) ->
-    Node = node(),
-    % only allow local pids
-    case node(Pid) of
-        Node -> Pid;
-        _ -> checkout(Pool)
+-spec checkout(PoolName :: pool()) -> no_process | pid().
+checkout(PoolName) ->
+    case poolgirl_pg:get(PoolName) of
+        {error, _} -> no_process;
+        Pid -> Pid
     end.
-
--spec checkout(Pool :: pool()) -> no_process | pid().
-checkout(Pool) ->
-    Pid = poolgirl_pg2:get_closest_pid(Pool),
-    ensure_valid_pid(Pid, Pool).
 
 -spec checkin(Pool :: pool(), Worker :: pid()) -> ok.
 checkin(_Pool, Worker) when is_pid(Worker) -> ok.
@@ -113,7 +103,7 @@ init([], WorkerArgs, #state{name = PoolName,
                             size = Size,
                             worker_module = Mod} = State) ->
     % create the pg2 group
-    ok = poolgirl_pg2:create(PoolName),
+    ok = poolgirl_pg:create(PoolName),
     % start up the worker's supervisor and spin the requested number of workers
     {ok, Sup} = poolgirl_sup:start_link(Mod, WorkerArgs),
     Workers = populate(Size, Sup, PoolName),
@@ -127,20 +117,22 @@ handle_call({spin_up, N}, _From, #state{name = PoolName,
                                         workers = Workers} = State) ->
     NewWorkers = populate(N, Sup, PoolName),
     {reply, ok, State#state{size = Size + N, workers = Workers ++ NewWorkers}};
-handle_call({spin_down, N}, _From, #state{supervisor = Sup,
+handle_call({spin_down, N}, _From, #state{name = PoolName,
+                                          supervisor = Sup,
                                           workers = Workers} = State) ->
     % get a sublist of workers to spin down
     Victims = lists:sublist(Workers, N),
     lists:foreach(fun({WorkerRef, WorkerPid}) ->
                     erlang:demonitor(WorkerRef),
-                    kill_worker(Sup, WorkerPid)
+                    kill_worker(Sup, WorkerPid),
+                    poolgirl_pg:leave(PoolName, WorkerPid)
                   end, Victims),
     {reply, ok, State#state{workers = Workers -- Victims}};
-handle_call(get_workers, _From, #state{supervisor = Sup} = State) ->
-    WorkerList = [Pid || {undefined, Pid, worker, _} <-
-                            supervisor:which_children(Sup)],
+handle_call(get_workers, _From, #state{name = PoolName} = State) ->
+    WorkerList = poolgirl_pg:get_members(PoolName),
     {reply, WorkerList, State};
-handle_call(stop, _From, State) ->
+handle_call(stop, _From, #state{name = PoolName} = State) ->
+    poolgirl_pg:delete(PoolName),
     {stop, normal, ok, State};
 handle_call(_Msg, _From, State) ->
     Reply = {error, invalid_message},
@@ -155,14 +147,14 @@ handle_info({'DOWN', _Reference, process, Pid, _Reason},
            workers = Workers} = State) ->
 
     % remove the worker from the pg2 group
-    ok = poolgirl_pg2:leave(PoolName, Pid),
+    ok = poolgirl_pg:leave(PoolName, Pid),
     % spin up a new worker to replace the one that just died
     NewPid = new_worker(Sup),
     % we want a message if the worker dies
     NewRef = erlang:monitor(process, NewPid),
     NewWorker = {NewRef, NewPid},
     % join the worker to the pg2 group
-    ok = poolgirl_pg2:join(PoolName, NewPid),
+    ok = poolgirl_pg:join(PoolName, NewPid),
     {noreply, State#state{workers = Workers ++ [NewWorker]}};
 handle_info(_Info, State) ->
     {noreply, State}.
@@ -203,5 +195,5 @@ populate(N, Sup, PoolName, Acc) ->
     % we want a message if the worker dies
     Ref = erlang:monitor(process, Pid),
     % join the worker to the pg2 group
-    ok = poolgirl_pg2:join(PoolName, Pid),
+    ok = poolgirl_pg:join(PoolName, Pid),
     populate(N-1, Sup, PoolName, Acc ++ [{Ref, Pid}]).
