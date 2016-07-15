@@ -4,6 +4,14 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased][unreleased]
 
+## [2.0.0] - 26-07-2016
+### Added
+    + Add benchmarks
+### Changed
+    + Refactor process group logic
+    + Refactor supervision tree hierarchy
+### Fixed
+
 ## [1.1.0] - 20-10-2015
 ### Added
     + pg2 local module, does no global multi calls

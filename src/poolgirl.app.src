@@ -1,6 +1,6 @@
 {application, poolgirl, [
     {description, "A sexy Erlang worker pool factory"},
-    {vsn, "1.2.0"},
+    {vsn, "2.0.0"},
     {applications, [kernel, stdlib]},
     {registered, [poolgirl]},
     {mod, { poolgirl_app, []}}
