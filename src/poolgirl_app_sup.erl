@@ -3,7 +3,8 @@
 -behaviour(supervisor).
 
 %% API.
--export([start_link/0]).
+-export([start_link/0,
+         start_child/2]).
 
 %% supervisor.
 -export([init/1]).
@@ -14,10 +15,12 @@
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
+start_child(PoolArgs, WorkerArgs) ->
+    supervisor:start_child(poolgirl_app_sup, [PoolArgs, WorkerArgs]).
+
 %% supervisor.
 
 init([]) ->
-    %% this supervisor sole function is to create the ets table
-    %% and own it
-    ok = poolgirl_pg:init(),
-    {ok, {{one_for_one, 10, 10}, []}}.
+    {ok, {{simple_one_for_one, 0, 1},
+          [{poolgirl_sup, {poolgirl_sup, start_link, []},
+            transient, 5000, supervisor, [poolgirl_sup]}]}}.

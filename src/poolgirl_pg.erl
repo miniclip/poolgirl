@@ -1,7 +1,6 @@
 -module(poolgirl_pg).
 
--export([init/0,
-         get/1,
+-export([get/1,
          create/1,
          delete/1,
          join/2,
@@ -14,22 +13,22 @@
 %%% Exported functions
 %%%
 
--spec init() -> ok.
-init() ->
-    ?MODULE = ets:new(?MODULE,
-                        [set, public, named_table,
-                         {read_concurrency, true}]),
-    ok.
-
--spec create(Name :: name()) -> ok.
+-spec create(Name :: name()) -> ok | already_exists.
 create(Name) ->
+    Name = ets:new(Name,
+                    [set, public, named_table,
+                     {read_concurrency, true}]),
     Table = pool_name(Name),
-    true = ets:insert_new(?MODULE, {Table, []}),
-    ok.
+    case ets:member(Name, Table) of
+      false ->
+        true = ets:insert_new(Name, {Table, []}),
+        ok;
+      true -> already_exists
+    end.
 
 -spec delete(Name :: name()) -> ok.
 delete(Name) ->
-    true = ets:delete(?MODULE, pool_name(Name)),
+    true = ets:delete(Name, pool_name(Name)),
     ok.
 
 -spec join(Name, Pid :: pid()) -> ok | {error, {no_such_group, Name}}
@@ -38,7 +37,7 @@ join(Name, Pid) when is_pid(Pid) ->
     case get_members(Name) of
         {error, {no_such_group, Name}} -> {error, {no_such_group, Name}};
         Members ->
-            true = ets:insert(?MODULE, {pool_name(Name), Members ++ [Pid]}),
+            true = ets:insert(Name, {pool_name(Name), Members ++ [Pid]}),
             ok
     end.
 
@@ -48,16 +47,17 @@ leave(Name, Pid) when is_pid(Pid) ->
     case get_members(Name) of
         {error, {no_such_group, Name}} -> {error, {no_such_group, Name}};
         Members ->
-            true = ets:insert(?MODULE, {pool_name(Name), Members -- [Pid]}),
+            true = ets:insert(Name, {pool_name(Name), Members -- [Pid]}),
             ok
     end.
 
 -spec get_members(Name) -> [pid()] | {error, {no_such_group, Name}}
       when Name :: name().
 get_members(Name) ->
-    case ets:lookup(?MODULE, Name) of
+    case catch ets:lookup(Name, Name) of
         [] -> {error, {no_such_group, Name}};
-        [{Name, Members}] -> Members
+        [{Name, Members}] -> Members;
+        {'EXIT', _} -> []
     end.
 
 -spec get(Name) ->  pid() | {error, Reason} when

@@ -11,7 +11,7 @@ pool_test_() ->
         fun(_) ->
             case whereis(poolgirl_test) of
                 undefined -> ok;
-                Pid -> pool_call(Pid, stop)
+                Pid -> poolgirl:stop(Pid)
             end,
             error_logger:tty(true)
         end,
@@ -39,6 +39,12 @@ pool_test_() ->
             },
             {<<"Pool behaves upon worker depletion">>,
                 fun pool_worker_depletion/0
+            },
+            {<<"Proper cleanup on Pool stop">>,
+                fun pool_proper_cleanup_on_stop/0
+            },
+            {<<"Proper cleanup on Pool death">>,
+                fun pool_proper_cleanup_on_death/0
             }
         ]
     }.
@@ -55,18 +61,19 @@ kill_worker(Pid) ->
 pool_startup() ->
     %% Check basic pool operation.
     {ok, Pid} = new_pool(10),
-    ?assertEqual(10, length(pool_call(Pid, get_workers))),
+    ?assertEqual(10, length(poolgirl:get_workers(Pid))),
     poolgirl:checkout(Pid),
-    ?assertEqual(10, length(pool_call(Pid, get_workers))),
+    ?assertEqual(10, length(poolgirl:get_workers(Pid))),
     ok = pool_call(Pid, stop).
 
 worker_death() ->
     {ok, Pid} = new_pool(5),
+    ?assertEqual(5, length(poolgirl:get_workers(Pid))),
     Worker = poolgirl:checkout(Pid),
     kill_worker(Worker),
     %% a little pause to allow the dust to settle after a death
     timer:sleep(1000),
-    ?assertEqual(5, length(pool_call(Pid, get_workers))),
+    ?assertEqual(5, length(poolgirl:get_workers(Pid))),
     ok = pool_call(Pid, stop).
 
 pool_returns_status() ->
@@ -121,12 +128,30 @@ multiple_pools() ->
                             gen_server:cast(Worker, {test_crash, atom})
                         end)
                   end, lists:seq(0, 50)),
+    %% a little pause to allow the dust to settle after a death
+    timer:sleep(1000),
     ?assertEqual({ready, 5}, poolgirl:status(Pool1)),
     ?assertEqual({ready, 5}, poolgirl:status(Pool2)),
     ?assertEqual({ready, 5}, poolgirl:status(Pool3)),
     ok = pool_call(Pool1, stop),
     ok = pool_call(Pool2, stop),
     ok = pool_call(Pool3, stop).
+
+pool_proper_cleanup_on_stop() ->
+    {ok, Pool1} = new_pool(poolgirl_test1, 5),
+    ?assertEqual(1, length(supervisor:which_children(poolgirl_app_sup))),
+    ok = pool_call(Pool1, stop),
+    %% a little pause to allow the dust to settle after a death
+    timer:sleep(500),
+    ?assertEqual(0, length(supervisor:which_children(poolgirl_app_sup))).
+
+pool_proper_cleanup_on_death() ->
+    {ok, _Pool1} = new_pool(poolgirl_test1, 5),
+    ?assertEqual(1, length(supervisor:which_children(poolgirl_app_sup))),
+    exit(whereis(poolgirl_test1), kill),
+    %% a little pause to allow the dust to settle after a death
+    timer:sleep(500),
+    ?assertEqual(0, length(supervisor:which_children(poolgirl_app_sup))).
 
 %%
 %% Internal
@@ -137,8 +162,9 @@ new_pool(Size) ->
 
 new_pool(Name, Size) ->
     poolgirl:start_link([{name, {local, Name}},
-                        {worker_module, poolgirl_test_worker},
-                        {size, Size}]),
+                         {worker_module, poolgirl_test_worker},
+                         {size, Size}]),
+    timer:sleep(500),
     {ok, Name}.
 
 pool_call(ServerRef, Request) ->
