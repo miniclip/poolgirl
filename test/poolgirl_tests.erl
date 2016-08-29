@@ -45,6 +45,12 @@ pool_test_() ->
             },
             {<<"Proper cleanup on Pool death">>,
                 fun pool_proper_cleanup_on_death/0
+            },
+            {<<"Able to properly stop and restart">>,
+                fun pool_proper_restart/0
+            },
+            {<<"Able to properly recycle a worker pool">>,
+                fun pool_proper_recycle/0
             }
         ]
     }.
@@ -107,6 +113,8 @@ pool_worker_depletion() ->
                             gen_server:cast(Worker, {test_crash, atom})
                         end)
                   end, lists:seq(0, 50)),
+    %% allow for the pool to replenish the crashed workers
+    timer:sleep(50),
     ?assertEqual({ready, 5}, poolgirl:status(Pool)),
     ok = pool_call(Pool, stop).
 
@@ -152,6 +160,39 @@ pool_proper_cleanup_on_death() ->
     %% a little pause to allow the dust to settle after a death
     timer:sleep(500),
     ?assertEqual(0, length(supervisor:which_children(poolgirl_app_sup))).
+
+pool_proper_restart() ->
+    {ok, Pool1} = new_pool(poolgirl_test1, 5),
+    %% a little pause to allow the dust to settle after a death
+    % timer:sleep(500),
+    ok = pool_call(Pool1, stop),
+    %% a little pause to allow the dust to settle after a death
+    {ok, Pool1} = new_pool(poolgirl_test1, 5).
+
+pool_proper_recycle() ->
+    {ok, Pool} = new_pool(poolgirl_test1, 5),
+    %% get the pids of the current worker pool
+    Workers0 = poolgirl:get_workers(Pool),
+    %% recycle all the workers in the pool, that means
+    %% spinning down and then up all the workers in the list
+    lists:foreach(fun(_) ->
+                    ok = poolgirl:spin(down, Pool, 1),
+                    ok = poolgirl:spin(up, Pool, 1)
+                  end, Workers0),
+    %% get the pids of the current worker pool
+    Workers1 = poolgirl:get_workers(Pool),
+    %% none of the old workers should still exist
+    ?assertEqual(Workers1 -- Workers0, Workers1),
+    %% recycle all but one of the workers in the pool
+    lists:foreach(fun(_) ->
+                    ok = poolgirl:spin(down, Pool, 1),
+                    ok = poolgirl:spin(up, Pool, 1)
+                  end, tl(Workers1)),
+    %% get the pids of the current worker pool
+    Workers2 = poolgirl:get_workers(Pool),
+    %% only one the old workers should still exist
+    ?assertEqual(length(Workers2) - 1,
+                 length(Workers2 -- Workers1)).
 
 %%
 %% Internal
