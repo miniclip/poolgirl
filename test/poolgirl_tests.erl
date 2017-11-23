@@ -51,6 +51,9 @@ pool_test_() ->
             },
             {<<"Able to properly recycle a worker pool">>,
                 fun pool_proper_recycle/0
+            },
+            {<<"Childspec'd pool isn't supervised by poolgirl">>,
+                fun independent_childspec_pool/0
             }
         ]
     }.
@@ -193,6 +196,18 @@ pool_proper_recycle() ->
     %% only one the old workers should still exist
     ?assertEqual(length(Workers2) - 1,
                  length(Workers2 -- Workers1)).
+
+independent_childspec_pool() ->
+    PoolId = independent_childspec_pool,
+    PoolArgs = [{worker_module, poolgirl_test_worker}, {size, 1}],
+    Childspec = poolgirl:child_spec(PoolId, PoolArgs),
+    ExtSupervisor = kernel_safe_sup,
+    IntSupervisor = poolgirl_app_sup,
+    {ok, PoolPid} = supervisor:start_child(ExtSupervisor, Childspec),
+    ?assert(lists:keymember(PoolPid, 2, supervisor:which_children(ExtSupervisor))),
+    ?assert(not lists:keymember(PoolPid, 2, supervisor:which_children(IntSupervisor))),
+    ok = supervisor:terminate_child(ExtSupervisor, PoolId),
+    ok = supervisor:delete_child(ExtSupervisor, PoolId).
 
 %%
 %% Internal

@@ -48,8 +48,8 @@ child_spec(PoolId, PoolArgs) ->
                  WorkerArgs :: proplists:proplist())
     -> supervisor:child_spec().
 child_spec(PoolId, PoolArgs, WorkerArgs) ->
-    {PoolId, {poolgirl, start_link, [PoolArgs, WorkerArgs]},
-     permanent, 5000, worker, [poolgirl]}.
+    {PoolId, {poolgirl_sup, start_link, [PoolArgs, WorkerArgs]},
+     permanent, 5000, supervisor, [poolgirl]}.
 
 -spec start_link(PoolArgs :: proplists:proplist())
     -> start_ret().
