@@ -4,6 +4,9 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased][unreleased]
 
+### Fixed
+    + References to locally unused functions (xref'ed)
+
 ## [2.0.1] - 23-11-2017
 ### Fixed
     + Fix slow and unclean shutdown when using child_spec/{2,3}
