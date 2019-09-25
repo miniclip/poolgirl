@@ -7,6 +7,8 @@
          start/2,
          stop/1]).
 
+-ignore_xref([start/0]).
+
 start() ->
     start(undefined, undefined).
 
