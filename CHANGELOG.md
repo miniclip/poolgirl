@@ -2,7 +2,7 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## [Unreleased][unreleased]
+## [2.0.2] - 26-09-2019
 
 ### Fixed
     + References to locally unused functions (xref'ed)
