@@ -8,6 +8,8 @@
 %% supervisor.
 -export([init/1]).
 
+-ignore_xref([start_link/2]).
+
 start_link(Mod, Args) ->
     supervisor:start_link(?MODULE, {Mod, Args}).
 

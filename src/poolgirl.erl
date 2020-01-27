@@ -23,6 +23,16 @@
          child_spec/2, child_spec/3,
          stop/1]).
 
+-ignore_xref([checkin/2,
+              transaction/2,
+              get_workers/1,
+              start_link/1, start_link/2,
+              start_link2/3,
+              status/1,
+              spin/3,
+              child_spec/2, child_spec/3,
+              stop/1]).
+
 % Copied from gen:start_ret/0
 -type start_ret() :: {'ok', pid()} | 'ignore' | {'error', term()}.
 

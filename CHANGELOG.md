@@ -2,7 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## [Unreleased][unreleased]
+## [2.0.2] - 26-09-2019
+
+### Fixed
+    + References to locally unused functions (xref'ed)
 
 ## [2.0.1] - 23-11-2017
 ### Fixed
@@ -14,6 +17,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
     + Refactor process group logic
     + Refactor supervision tree hierarchy
+### Fixed
+
+## [1.1.1] - 20-10-2015
+### Added
+    + pg2 local module renamed to poolgirl_pg2
+### Changed
 ### Fixed
 
 ## [1.1.0] - 20-10-2015
