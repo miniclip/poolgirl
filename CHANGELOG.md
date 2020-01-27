@@ -2,6 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+    + .gitignore: assume our `rebar3` -oriented nature
+
 ## [2.0.2] - 26-09-2019
 
 ### Fixed
