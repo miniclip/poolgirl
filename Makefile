@@ -26,7 +26,7 @@ REBAR=$(shell which rebar)
 .PHONY: all compile clean dialyze rebuild test
 
 all: compile
-travis: test
+travis: dialyze test
 
 # =============================================================================
 # Rules to build the system
