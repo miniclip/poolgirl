@@ -4,6 +4,9 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+    + Travis CI targets (make it more modern)
+
 ### Fixed
     + .gitignore: assume our `rebar3` -oriented nature
 
