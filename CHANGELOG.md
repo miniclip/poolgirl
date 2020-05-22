@@ -4,6 +4,9 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+    + Travis CI icon, to help increase consumer confidence
+
 ### Changed
     + Travis CI targets (make it more modern)
 

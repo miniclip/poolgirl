@@ -1,5 +1,7 @@
 # Poolgirl - A sexy Erlang worker pool factory
 
+[![](https://travis-ci.org/MiniclipPortugal/poolgirl.png?branch=master)](https://travis-ci.org/MiniclipPortugal/poolgirl)
+
 Poolgirl is a **lightweight**, **generic** pooling library for Erlang with a
 focus on **simplicity**, **performance**, and **rock-solid** disaster recovery.
 Poolgirl is Poolboy's little sister, it's directed towards the use-case of simple workers that process requests with no need for a reply (ie. that only handle cast requests)
