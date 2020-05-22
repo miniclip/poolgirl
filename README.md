@@ -1,6 +1,10 @@
 # Poolgirl - A sexy Erlang worker pool factory
 
 [![](https://travis-ci.com/MiniclipPortugal/poolgirl.png?branch=master)](https://travis-ci.com/MiniclipPortugal/poolgirl)
+[![Erlang][erlang badge]][erlang downloads]
+
+[erlang badge]: https://img.shields.io/badge/erlang-%3E%3D19.0-lightgrey
+[erlang downloads]: http://www.erlang.org/download
 
 Poolgirl is a **lightweight**, **generic** pooling library for Erlang with a
 focus on **simplicity**, **performance**, and **rock-solid** disaster recovery.
