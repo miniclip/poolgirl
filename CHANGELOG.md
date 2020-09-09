@@ -4,6 +4,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [2.0.3] - 09-09-2020
+
 ### Added
     + Travis CI icon, to help increase consumer confidence
 
