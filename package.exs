@@ -14,6 +14,6 @@ defmodule Poolgirl.Mixfile do
     [files: ~w(src rebar.config README.md CHANGELOG.md LICENSE VERSION),
      contributors: ["Luis Rascão"],
      licenses: ["MIT"],
-     links: %{"GitHub" => "https://github.com/MiniclipPortugal/poolgirl"}]
+     links: %{"GitHub" => "https://github.com/miniclip/poolgirl"}]
   end
 end

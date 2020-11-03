@@ -1,6 +1,6 @@
 # Poolgirl - A sexy Erlang worker pool factory
 
-[![](https://travis-ci.com/MiniclipPortugal/poolgirl.png?branch=master)](https://travis-ci.com/MiniclipPortugal/poolgirl)
+[![](https://travis-ci.com/miniclip/poolgirl.png?branch=master)](https://travis-ci.com/miniclip/poolgirl)
 [![Erlang][erlang badge]][erlang downloads]
 
 [erlang badge]: https://img.shields.io/badge/erlang-%3E%3D19.0-lightgrey
