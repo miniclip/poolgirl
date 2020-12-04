@@ -4,6 +4,9 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+    + `edoc` based documentation
+
 ## [2.0.3] - 09-09-2020
 
 ### Added
