@@ -17,4 +17,6 @@ jobs:
         os: [ubuntu-latest]
     steps:
       - uses: actions/checkout@v2
-      - run: make version
+      - run: rebar3 xref
+      - run: rebar3 dialyzer
+      - run: rebar3 eunit
