@@ -1,3 +1,4 @@
+%% @private
 -module(poolgirl_app).
 
 -behaviour(application).

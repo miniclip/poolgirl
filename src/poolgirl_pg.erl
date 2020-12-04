@@ -1,3 +1,4 @@
+%% @private
 -module(poolgirl_pg).
 
 -export([get/1,

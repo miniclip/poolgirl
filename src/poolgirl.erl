@@ -48,11 +48,16 @@
     size = 5 :: non_neg_integer()
 }).
 
+%% @doc The same as child_spec/3 with no configuration options
 -spec child_spec(PoolId :: term(), PoolArgs :: proplists:proplist())
     -> supervisor:child_spec().
 child_spec(PoolId, PoolArgs) ->
     child_spec(PoolId, PoolArgs, []).
 
+%% @doc The pool spec to use under your supervision tree
+%% @param PoolId The unique pool id
+%% @param PoolArgs The pool's configuration options
+%% @param WorkerArgs The pool's worker's configuration options
 -spec child_spec(PoolId :: term(),
                  PoolArgs :: proplists:proplist(),
                  WorkerArgs :: proplists:proplist())
@@ -61,17 +66,20 @@ child_spec(PoolId, PoolArgs, WorkerArgs) ->
     {PoolId, {poolgirl_sup, start_link, [PoolArgs, WorkerArgs]},
      permanent, 5000, supervisor, [poolgirl]}.
 
+%% @private
 -spec start_link(PoolArgs :: proplists:proplist())
     -> start_ret().
 start_link(PoolArgs)  ->
     start_link(PoolArgs, []).
 
+%% @private
 -spec start_link(PoolArgs :: proplists:proplist(),
                  WorkerArgs :: proplists:proplist())
     -> start_ret().
 start_link(PoolArgs, WorkerArgs)  ->
     poolgirl_app_sup:start_child(PoolArgs, WorkerArgs).
 
+%% @private
 -spec start_link2(Parent :: pid(),
                   PoolArgs :: proplists:proplist(),
                   WorkerArgs :: proplists:proplist())
@@ -84,43 +92,61 @@ start_link2(Parent, PoolArgs, WorkerArgs) ->
             gen_server:start_link(PoolName, ?MODULE, {Parent, PoolArgs, WorkerArgs}, [])
     end.
 
--spec checkout(PoolName :: pool()) -> no_process | pid().
-checkout(PoolName) ->
-    case poolgirl_pg:get(PoolName) of
+%% @doc Fetch a worker from a pool
+%% @param PoolId The unique pool id
+-spec checkout(PoolId :: pool()) -> no_process | pid().
+checkout(PoolId) ->
+    case poolgirl_pg:get(PoolId) of
         {error, _} -> no_process;
         Pid -> Pid
     end.
 
--spec checkin(Pool :: pool(), Worker :: pid()) -> ok.
-checkin(_Pool, Worker) when is_pid(Worker) -> ok.
+%% @doc This function exists for compatibility with <code>poolboy</code> only
+-spec checkin(PoolId :: pool(), Worker :: pid()) -> ok.
+checkin(_PoolId, Worker) when is_pid(Worker) -> ok.
 
--spec transaction(Pool :: pool(), Fun :: fun((Worker :: pid()) -> any()))
+%% @doc Execute your function in the context of a pool worker
+%% @param PoolId The unique pool id
+%% @param Fun A (catch-protected) function (taking a worker as input) to execute
+-spec transaction(PoolId :: pool(), Fun :: fun((Worker :: pid()) -> any()))
     -> any().
-transaction(Pool, Fun) ->
-    Worker = poolgirl:checkout(Pool),
+transaction(PoolId, Fun) ->
+    Worker = poolgirl:checkout(PoolId),
     catch Fun(Worker).
 
--spec status(Pool :: pool()) -> {atom(), integer()}.
-status(Pool) ->
-    gen_server:call(Pool, status).
+%% @doc Fetch the status of a pool
+%% @param PoolId The unique pool id
+-spec status(PoolId :: pool()) -> {atom(), integer()}.
+status(PoolId) ->
+    gen_server:call(PoolId, status).
 
--spec spin(up | down, Pool :: pool(), N :: pos_integer()) -> ok.
-spin(up, Pool, N) ->
-    gen_server:call(Pool, {spin_up, N});
-spin(down, Pool, N) ->
-    gen_server:call(Pool, {spin_down, N}).
+%% @doc Change your pool's size
+%% @param UpOrDown The size direction (up or down)
+%% @param PoolId The unique pool id
+%% @param N The number of workers to assign to the pool (increment or decrement)
+-spec spin(UpOrDown :: up | down, PoolId :: pool(), HowMany :: pos_integer()) -> ok.
+spin(up, PoolId, HowMany) ->
+    gen_server:call(PoolId, {spin_up, HowMany});
+spin(down, PoolId, HowMany) ->
+    gen_server:call(PoolId, {spin_down, HowMany}).
 
--spec stop(Pool :: pool()) -> ok.
-stop(Pool) ->
-    gen_server:call(Pool, stop).
+%% @doc Kill your pool
+%% @param PoolId The unique pool id
+-spec stop(PoolId :: pool()) -> ok.
+stop(PoolId) ->
+    gen_server:call(PoolId, stop).
 
--spec get_workers(Pool :: pool()) -> list().
-get_workers(Pool) ->
-    poolgirl_pg:get_members(Pool).
+%% @doc List your pool's workers
+%% @param PoolId The unique pool id
+-spec get_workers(PoolId :: pool()) -> list().
+get_workers(PoolId) ->
+    poolgirl_pg:get_members(PoolId).
 
+%% @private
 init({Parent, PoolArgs, WorkerArgs}) ->
     init(PoolArgs, WorkerArgs, #state{parent = Parent}).
 
+%% @private
 init([{name, {local, PoolName}} | Rest], WorkerArgs, State) ->
     init(Rest, WorkerArgs, State#state{name = PoolName});
 init([{name, {global, PoolName}} | Rest], WorkerArgs, State) ->
@@ -145,6 +171,7 @@ init([], _WorkerArgs, State) ->
     gen_server:cast(self(), init),
     {ok, State}.
 
+%% @private
 handle_call(status, _From, #state{supervisor = Sup} = State) ->
     {reply, {ready, length(supervisor:which_children(Sup))}, State};
 handle_call({spin_up, N}, _From, #state{name = PoolName,
@@ -175,6 +202,7 @@ handle_call(_Msg, _From, State) ->
     Reply = {error, invalid_message},
     {reply, Reply, State}.
 
+%% @private
 handle_cast(init, #state{name = PoolName,
                          parent = Parent,
                          size = Size,
@@ -208,6 +236,7 @@ handle_cast(stop, #state{name = PoolName,
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
+%% @private
 handle_info({'DOWN', Ref, process, Pid, _Reason},
     #state{name = PoolName,
            supervisor = undefined,
@@ -233,10 +262,12 @@ handle_info({'DOWN', Ref, process, Pid, _Reason},
 handle_info(_Info, State) ->
     {noreply, State}.
 
+%% @private
 terminate(_Reason, #state{name = PoolName}) ->
     ok = poolgirl_pg:delete(PoolName),
     ok.
 
+%% @private
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
