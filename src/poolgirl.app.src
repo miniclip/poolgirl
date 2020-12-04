@@ -3,5 +3,8 @@
     {vsn, "2.0.3"},
     {applications, [kernel, stdlib]},
     {registered, [poolgirl]},
-    {mod, { poolgirl_app, []}}
+    {mod, { poolgirl_app, []}},
+    {licenses, ["MIT"]},
+    {links, [{"GitHub", "https://github.com/miniclip/poolgirl"}]},
+    {pkg_name, mc_poolgirl}
 ]}.
