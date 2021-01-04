@@ -1,3 +1,4 @@
+%% @private
 %% Poolbgirl - A sexy Erlang worker pool factory
 
 -module(poolgirl_sup).
