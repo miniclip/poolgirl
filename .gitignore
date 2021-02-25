@@ -1,7 +1,5 @@
+.rebar3
 _build
-rebar.lock
-.rebar
-.eunit
-.deps_plt
 erl_crash.dump
-ebin
+log
+rebar3.crashdump
