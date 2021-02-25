@@ -9,7 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `edoc` based documentation
+- `edoc` based documentation [Paulo Oliveira]
+- a fresher approach to `elvis.config` [Paulo Oliveira]
+- a fresher approach to `Makefile` [Paulo Oliveira]
+- a fresher approach to `rebar.config` [Paulo Oliveira]
+
+### Changed
+
+- CI from Travis to GitHub Actions [Paulo Oliveira]
+
+### Removed
+
+- `.editorconfig` [Paulo Oliveira]
+- `bench` [Paulo Oliveira]
+- `package.exs` [Paulo Oliveira]
+- `VERSION` [Paulo Oliveira]
 
 ## [2.0.3] - 09-09-2020
 
