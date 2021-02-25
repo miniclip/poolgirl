@@ -70,7 +70,7 @@ get(Name) ->
         [] -> {error, {no_process, Name}};
         [Pid] -> Pid;
         Members when is_list(Members) ->
-            {_,_,X} = os:timestamp(),
+            {_, _, X} = os:timestamp(),
             lists:nth((X rem length(Members))+1, Members);
         Else ->
             Else

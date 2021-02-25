@@ -34,7 +34,7 @@
               stop/1]).
 
 % Copied from gen:start_ret/0
--type start_ret() :: {'ok', pid()} | 'ignore' | {'error', term()}.
+-type start_ret() :: {'ok', pid()} | {'error', term()}.
 
 -type pool() ::
     Name :: atom().

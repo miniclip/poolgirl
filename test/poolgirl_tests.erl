@@ -2,6 +2,8 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
+-elvis([{elvis_style, dont_repeat_yourself, disable}]).
+
 pool_test_() ->
     {foreach,
         fun() ->
@@ -11,7 +13,7 @@ pool_test_() ->
         fun(_) ->
             case whereis(poolgirl_test) of
                 undefined -> ok;
-                Pid -> poolgirl:stop(Pid)
+                _ -> poolgirl:stop(poolgirl_test)
             end,
             error_logger:tty(true)
         end,
@@ -71,7 +73,7 @@ pool_startup() ->
     %% Check basic pool operation.
     {ok, Pid} = new_pool(10),
     ?assertEqual(10, length(poolgirl:get_workers(Pid))),
-    poolgirl:checkout(Pid),
+    _ = poolgirl:checkout(Pid),
     ?assertEqual(10, length(poolgirl:get_workers(Pid))),
     ok = pool_call(Pid, stop).
 
@@ -217,9 +219,9 @@ new_pool(Size) ->
     new_pool(poolgirl_test, Size).
 
 new_pool(Name, Size) ->
-    poolgirl:start_link([{name, {local, Name}},
-                         {worker_module, poolgirl_test_worker},
-                         {size, Size}]),
+    _ = poolgirl:start_link([{name, {local, Name}},
+                             {worker_module, poolgirl_test_worker},
+                             {size, Size}]),
     timer:sleep(500),
     {ok, Name}.
 

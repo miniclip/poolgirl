@@ -54,21 +54,3 @@ cover:
 edoc:
 	@rebar3 edoc
 .PHONY: edoc
-
-bench/basho_bench:
-	@git clone git://github.com/basho/basho_bench.git bench/basho_bench || true
-	# link the basho_bench driver
-	@rm -f bench/basho_bench/src/basho_bench_driver_poolgirl.erl
-	@ln -s ../../basho_bench_driver_poolgirl.erl \
-		  bench/basho_bench/src/basho_bench_driver_poolgirl.erl
-	@cd bench/basho_bench; rebar3 escriptize; cd ..
-
-bench: bench/basho_bench compile
-	@cd bench; \
-		rm -rf basho_bench/tests; \
-		basho_bench/basho_bench \
-			--results-dir basho_bench/tests \
-			basho_bench_driver_poolgirl.config; \
-		cd basho_bench; make results; \
-		cp tests/current/summary.png poolgirl.summary.`date +%d%b%Y-%H%M%S`.png; \
-		rm ../../src/poolgirl_test_worker.erl
