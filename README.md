@@ -1,14 +1,13 @@
-# Poolgirl - A sexy Erlang worker pool factory
+# poolgirl - A sexy Erlang worker pool factory [![GitHub Actions CI][ci-img]][ci]
 
-![build](https://github.com/miniclip/poolgirl/workflows/build/badge.svg)
-[![erlang][erlang badge]][erlang downloads]
-
-[erlang badge]: https://img.shields.io/badge/erlang-%3E%3D19.3-lightgrey
-[erlang downloads]: http://www.erlang.org/download
+[ci]: https://github.com/miniclip/poolgirl
+[ci-img]: https://github.com/miniclip/poolgirl/workflows/build/badge.svg
 
 Poolgirl is a **lightweight**, **generic** pooling library for Erlang with a
 focus on **simplicity**, **performance**, and **rock-solid** disaster recovery.
-Poolgirl is Poolboy's little sister, it's directed towards the use-case of simple workers that process requests with no need for a reply (ie. that only handle cast requests)
+Poolgirl is Poolboy's little sister, it's directed towards the use-case of simple
+workers that process requests with no need for a reply (ie. that only handle cast
+requests)
 
 ## Usage
 
@@ -20,29 +19,42 @@ ok
 ```
 
 Q: Is this in any way related with poolboy?
-A: Yes, the interface and configuration is mostly the same, however poolgirl adds some additional methods.
+A: Yes, the interface and configuration is mostly the same, however poolgirl adds
+some additional methods.
 
 Q: So what's the difference, why another worker pool manager?
-A: Poolboy's manager of workers is a single gen_server process, in pools with a large number of workers the manager itself can become a bottleneck, a possible solution is to have multiple managers and load balance these.
-In use-case scenarios where the pool workers only handle cast requests and have a fast execution time per request (eg. analytics reporting, stats reporting) poolgirl overcomes this issue and lets you have high worker numbers with no additional overhead.
+A: Poolboy's manager of workers is a single gen_server process, in pools with a
+large number of workers the manager itself can become a bottleneck, a possible
+solution is to have multiple managers and load balance these.
+In use-case scenarios where the pool workers only handle cast requests and have a
+fast execution time per request (eg. analytics reporting, stats reporting) poolgirl
+overcomes this issue and lets you have high worker numbers with no additional overhead.
 
 Q: How does it work under the hood?
-A: When a client requests a worker from the pool no messages are sent to any other process in order to accomplish this, poolgirl accesses a pg2 process group and recruits a random worker.
+A: When a client requests a worker from the pool no messages are sent to any other
+process in order to accomplish this, poolgirl accesses a pg2 process group and recruits
+a random worker.
 
-Q: But won't that overload the workers message queue? You're basically choosing a worker at random.
-A: That is true, hence the fact the poolgirl is best suited to the use-case described above, if you're making long synchronous requests to workers then you're probably better off sticking with poolboy.
+Q: But won't that overload the workers message queue? You're basically choosing a
+worker at random.
+A: That is true, hence the fact the poolgirl is best suited to the use-case described
+above, if you're making long synchronous requests to workers then you're probably
+better off sticking with poolboy.
 
-Q: So if it's the client that recruits the worker what does the checkin operation do?
+Q: So if it's the client that recruits the worker what does the checkin operation
+do?
 A: Nothing, it's there basically to ease the transition between poolboy <-> poolgirl
 
 ## API
 
 - `checkout/1`: recruits a worker from the requested pool
 - `checkin/1`: does nothing
-- `transaction/2`: recruits a worker from the requested pool and executes a funcion with the worker pid as argument
+- `transaction/2`: recruits a worker from the requested pool and executes a funcion
+with the worker pid as argument
 - `get_workers/1`: returns a list of worker pids
 - `status/1`: returns the pool status
-- `spin/3`: spins up/down pool workers, these are immediately added/removed from the worker pool
+- `spin/3`: spins up/down pool workers, these are immediately added/removed from
+the worker pool
 
 ## Example
 

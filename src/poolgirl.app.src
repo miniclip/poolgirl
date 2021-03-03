@@ -1,10 +1,16 @@
 {application, poolgirl, [
     {description, "A sexy Erlang worker pool factory"},
-    {vsn, "2.0.3"},
-    {applications, [kernel, stdlib]},
-    {registered, [poolgirl]},
-    {mod, { poolgirl_app, []}},
-    {licenses, ["MIT"]},
-    {links, [{"GitHub", "https://github.com/miniclip/poolgirl"}]},
-    {pkg_name, mc_poolgirl}
+    {vsn, git},
+    {registered, []},
+    {mod, {poolgirl_app, []}},
+    {pkg_name, mc_poolgirl},
+
+    {applications, [
+        % OTP dependencies
+        kernel,
+        stdlib
+        % External dependencies
+    ]},
+
+    {env, []}
 ]}.

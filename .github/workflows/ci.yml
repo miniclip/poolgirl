@@ -15,10 +15,8 @@ jobs:
       image: erlang:${{matrix.otp_vsn}}
     strategy:
       matrix:
-        otp_vsn: [19.3, 20.3, 21.3, 22.3, 23.1]
+        otp_vsn: [19.3, 20.3, 21.3, 22.3, 23.2]
         os: [ubuntu-latest]
     steps:
       - uses: actions/checkout@v2
-      - run: rebar3 xref
-      - run: rebar3 dialyzer
-      - run: rebar3 eunit
+      - run: make version
