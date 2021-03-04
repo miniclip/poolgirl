@@ -4,6 +4,8 @@
     {registered, []},
     {mod, {poolgirl_app, []}},
     {pkg_name, mc_poolgirl},
+    {licenses, ["The MIT License"]},
+    {links, [{"GitHub", "https://github.com/miniclip/poolgirl"}]},
 
     {applications, [
         % OTP dependencies
