@@ -8,13 +8,17 @@ MAKEFLAGS += --no-builtin-rules
 version: upgrade clean compile check test edoc
 .PHONY: version
 
-upgrade: upgrade-rebar3_lint
+upgrade: upgrade-rebar3_lint upgrade-rebar3_hex
 	@rebar3 do unlock,upgrade
 .PHONY: upgrade
 
 upgrade-rebar3_lint:
 	@rebar3 plugins upgrade rebar3_lint
 .PHONY: upgrade-rebar3_lint
+
+upgrade-rebar3_hex:
+	@rebar3 plugins upgrade rebar3_hex
+.PHONY: upgrade-rebar3_hex
 
 clean:
 	@rebar3 clean -a
