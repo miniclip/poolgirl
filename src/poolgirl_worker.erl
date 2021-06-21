@@ -2,6 +2,7 @@
 
 -module(poolgirl_worker).
 -ignore_xref([behaviour_info/1]).
+-hank([{unused_callbacks, [start_link/1]}]).
 
 -callback start_link(WorkerArgs) -> {ok, Pid} |
                                     {error, {already_started, Pid}} |
