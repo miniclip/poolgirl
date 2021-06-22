@@ -48,6 +48,8 @@
     size = 5 :: non_neg_integer()
 }).
 
+-hank([{unnecessary_function_arguments, [checkin/2]}]).
+
 %% @doc The same as child_spec/3 with no configuration options
 -spec child_spec(PoolId :: term(), PoolArgs :: proplists:proplist())
     -> supervisor:child_spec().
