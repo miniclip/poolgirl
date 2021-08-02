@@ -177,8 +177,6 @@ init([], _WorkerArgs, State) ->
     %% check if we were supplied with pre-started workers
     case State#state.workers of
         [] ->
-            %% get the chilren of our supervisor
-            %% our brother is the worker supervisor
             {ok, Sup} = poolgirl_internal_directory:find(State#state.internal_directory,
                                                          poolgirl_worker_sup),
             Workers = populate(State#state.size, Sup, State#state.name),
