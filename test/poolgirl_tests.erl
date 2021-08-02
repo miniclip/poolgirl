@@ -63,7 +63,7 @@ pool_test_() ->
         ]
     }.
 
-% Tell a worker to exit and await its impending doom.
+%% Tell a worker to exit and await its impending doom.
 kill_worker(Pid) ->
     erlang:monitor(process, Pid),
     exit(Pid, kill),
