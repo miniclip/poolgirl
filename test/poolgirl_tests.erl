@@ -56,11 +56,14 @@ pool_test_() ->
             },
             {<<"Childspec'd pool isn't supervised by poolgirl">>,
                 fun independent_childspec_pool/0
+            },
+            {<<"Internal directory handles race conditions gracefully">>,
+                fun graceful_internal_directory_concurrency/0
             }
         ]
     }.
 
-%% Tell a worker to exit and await its impending doom.
+% Tell a worker to exit and await its impending doom.
 kill_worker(Pid) ->
     erlang:monitor(process, Pid),
     exit(Pid, kill),
@@ -75,7 +78,7 @@ pool_startup() ->
     ?assertEqual(10, length(poolgirl:get_workers(Pid))),
     _ = poolgirl:checkout(Pid),
     ?assertEqual(10, length(poolgirl:get_workers(Pid))),
-    ok = pool_call(Pid, stop).
+    ok = poolgirl:stop(Pid).
 
 worker_death() ->
     {ok, Pid} = new_pool(5),
@@ -85,30 +88,30 @@ worker_death() ->
     %% a little pause to allow the dust to settle after a death
     timer:sleep(1000),
     ?assertEqual(5, length(poolgirl:get_workers(Pid))),
-    ok = pool_call(Pid, stop).
+    ok = poolgirl:stop(Pid).
 
 pool_returns_status() ->
     {ok, Pool} = new_pool(2),
     ?assertEqual({ready, 2}, poolgirl:status(Pool)),
-    ok = pool_call(Pool, stop).
+    ok = poolgirl:stop(Pool).
 
 pool_worker_spin_up() ->
     {ok, Pool} = new_pool(2),
     poolgirl:spin(up, Pool, 2),
     ?assertEqual({ready, 4}, poolgirl:status(Pool)),
-    ok = pool_call(Pool, stop).
+    ok = poolgirl:stop(Pool).
 
 pool_worker_spin_down() ->
     {ok, Pool} = new_pool(4),
     poolgirl:spin(down, Pool, 2),
     ?assertEqual({ready, 2}, poolgirl:status(Pool)),
-    ok = pool_call(Pool, stop).
+    ok = poolgirl:stop(Pool).
 
 pool_only_local_workers() ->
     {ok, Pool} = new_pool(5),
     Worker = poolgirl:checkout(Pool),
     ?assertEqual(node(), node(Worker)),
-    ok = pool_call(Pool, stop).
+    ok = poolgirl:stop(Pool).
 
 pool_worker_depletion() ->
     {ok, Pool} = new_pool(5),
@@ -121,7 +124,7 @@ pool_worker_depletion() ->
     %% allow for the pool to replenish the crashed workers
     timer:sleep(50),
     ?assertEqual({ready, 5}, poolgirl:status(Pool)),
-    ok = pool_call(Pool, stop).
+    ok = poolgirl:stop(Pool).
 
 multiple_pools() ->
     {ok, Pool1} = new_pool(poolgirl_test1, 5),
@@ -146,14 +149,14 @@ multiple_pools() ->
     ?assertEqual({ready, 5}, poolgirl:status(Pool1)),
     ?assertEqual({ready, 5}, poolgirl:status(Pool2)),
     ?assertEqual({ready, 5}, poolgirl:status(Pool3)),
-    ok = pool_call(Pool1, stop),
-    ok = pool_call(Pool2, stop),
-    ok = pool_call(Pool3, stop).
+    ok = poolgirl:stop(Pool1),
+    ok = poolgirl:stop(Pool2),
+    ok = poolgirl:stop(Pool3).
 
 pool_proper_cleanup_on_stop() ->
     {ok, Pool1} = new_pool(poolgirl_test1, 5),
     ?assertEqual(1, length(supervisor:which_children(poolgirl_app_sup))),
-    ok = pool_call(Pool1, stop),
+    ok = poolgirl:stop(Pool1),
     %% a little pause to allow the dust to settle after a death
     timer:sleep(500),
     ?assertEqual(0, length(supervisor:which_children(poolgirl_app_sup))).
@@ -170,7 +173,7 @@ pool_proper_restart() ->
     {ok, Pool1} = new_pool(poolgirl_test1, 5),
     %% a little pause to allow the dust to settle after a death
     % timer:sleep(500),
-    ok = pool_call(Pool1, stop),
+    ok = poolgirl:stop(Pool1),
     %% a little pause to allow the dust to settle after a death
     {ok, Pool1} = new_pool(poolgirl_test1, 5).
 
@@ -211,6 +214,33 @@ independent_childspec_pool() ->
     ok = supervisor:terminate_child(ExtSupervisor, PoolId),
     ok = supervisor:delete_child(ExtSupervisor, PoolId).
 
+graceful_internal_directory_concurrency() ->
+    _ = process_flag(trap_exit, true),
+    InternalDirectory = poolgirl_internal_directory:new(),
+    ?assertEqual(error, poolgirl_internal_directory:find(InternalDirectory, foobar)),
+
+    TestPid = self(),
+    Pid1 = spawn_link(
+             fun () ->
+                     ?assertEqual(true, poolgirl_internal_directory:register(InternalDirectory,
+                                                                             foobar)),
+                     TestPid ! proceed,
+                     receive stop -> ok end
+             end),
+    receive proceed -> ok end,
+    ?assertEqual({ok, Pid1}, poolgirl_internal_directory:find(InternalDirectory, foobar)),
+
+    % Unable to register - conflicting process is alive
+    ?assertEqual(false, poolgirl_internal_directory:register(InternalDirectory, foobar)),
+    Pid1 ! stop,
+    receive {'EXIT', Pid1, _} -> ok end,
+
+    % Able to register - conflicting process has terminated
+    ?assertEqual(true, poolgirl_internal_directory:register(InternalDirectory, foobar)),
+
+    % Able to re-register
+    ?assertEqual(true, poolgirl_internal_directory:register(InternalDirectory, foobar)).
+
 %%
 %% Internal
 %%
@@ -224,6 +254,3 @@ new_pool(Name, Size) ->
                              {size, Size}]),
     timer:sleep(500),
     {ok, Name}.
-
-pool_call(ServerRef, Request) ->
-    gen_server:call(ServerRef, Request).
