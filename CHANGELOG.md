@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `rebar3_hank [Paulo Oliveira]
+- `rebar3_hank` [Paulo Oliveira]
 
 ### Changed
 
