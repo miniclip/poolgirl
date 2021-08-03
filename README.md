@@ -191,7 +191,7 @@ code_change(_OldVsn, State, _Extra) ->
 - `worker_module`: the module that represents the workers
 - `size`: maximum pool size
 
-## Authors
+## Original Author
 
 - Luis Rascão (lrascao) <luis.rascao@gmail.com>
 

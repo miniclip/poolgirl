@@ -41,7 +41,7 @@
 
 -record(state, {
     name,
-    parent = undefined :: undefined | pid(),
+    internal_directory :: poolgirl_internal_directory:t(),
     supervisor = undefined :: undefined | pid(),
     workers = [] :: [{reference(), pid()}],
     worker_module = undefined :: atom(),
@@ -82,16 +82,16 @@ start_link(PoolArgs, WorkerArgs)  ->
     poolgirl_app_sup:start_child(PoolArgs, WorkerArgs).
 
 %% @private
--spec start_link2(Parent :: pid(),
+-spec start_link2(InternalDirectory :: poolgirl_internal_directory:t(),
                   PoolArgs :: proplists:proplist(),
                   WorkerArgs :: proplists:proplist())
     -> start_ret().
-start_link2(Parent, PoolArgs, WorkerArgs) ->
+start_link2(InternalDirectory, PoolArgs, WorkerArgs) ->
     case proplists:get_value(name, PoolArgs) of
         undefined ->
-            gen_server:start_link(?MODULE, {Parent, PoolArgs, WorkerArgs}, []);
+            gen_server:start_link(?MODULE, {InternalDirectory, PoolArgs, WorkerArgs}, []);
         PoolName ->
-            gen_server:start_link(PoolName, ?MODULE, {Parent, PoolArgs, WorkerArgs}, [])
+            gen_server:start_link(PoolName, ?MODULE, {InternalDirectory, PoolArgs, WorkerArgs}, [])
     end.
 
 %% @doc Fetch a worker from a pool
@@ -136,7 +136,8 @@ spin(down, PoolId, HowMany) ->
 %% @param PoolId The unique pool id
 -spec stop(PoolId :: pool()) -> ok.
 stop(PoolId) ->
-    gen_server:call(PoolId, stop).
+    {ok, TopSupPid} = gen_server:call(PoolId, get_pid_of_top_pool_supervisor),
+    sys:terminate(TopSupPid, _Reason = shutdown).
 
 %% @doc List your pool's workers
 %% @param PoolId The unique pool id
@@ -145,8 +146,9 @@ get_workers(PoolId) ->
     poolgirl_pg:get_members(PoolId).
 
 %% @private
-init({Parent, PoolArgs, WorkerArgs}) ->
-    init(PoolArgs, WorkerArgs, #state{parent = Parent}).
+init({InternalDirectory, PoolArgs, WorkerArgs}) ->
+    _ = process_flag(trap_exit, true), % Always call `:terminate/2' (unless killed)
+    init(PoolArgs, WorkerArgs, #state{internal_directory = InternalDirectory}).
 
 %% @private
 init([{name, {local, PoolName}} | Rest], WorkerArgs, State) ->
@@ -170,8 +172,23 @@ init([{workers, Workers0} | Rest], WorkerArgs, State) when is_list(Workers0) ->
 init([_ | Rest], WorkerArgs, State) ->
     init(Rest, WorkerArgs, State);
 init([], _WorkerArgs, State) ->
-    gen_server:cast(self(), init),
-    {ok, State}.
+    % create the pg group
+    ok = poolgirl_pg:create(State#state.name),
+    %% check if we were supplied with pre-started workers
+    case State#state.workers of
+        [] ->
+            {ok, Sup} = poolgirl_internal_directory:find(State#state.internal_directory,
+                                                         poolgirl_worker_sup),
+            Workers = populate(State#state.size, Sup, State#state.name),
+            {ok, State#state{supervisor = Sup,
+                             workers = Workers}};
+        Workers ->
+            lists:foreach(fun({_Ref, Pid}) ->
+                            % join the worker to the pg group
+                            ok = poolgirl_pg:join(State#state.name, Pid)
+                          end, Workers),
+            {ok, State#state{supervisor = undefined}}
+    end.
 
 %% @private
 handle_call(status, _From, #state{supervisor = Sup} = State) ->
@@ -193,48 +210,15 @@ handle_call({spin_down, N}, _From, #state{name = PoolName,
                     poolgirl_pg:leave(PoolName, WorkerPid)
                   end, Victims),
     {reply, ok, State#state{workers = Workers -- Victims}};
-handle_call(stop, _From, #state{name = PoolName,
-                                supervisor = undefined} = State) ->
-    poolgirl_pg:delete(PoolName),
-    {stop, normal, ok, State};
-handle_call(stop, _From, State) ->
-    gen_server:cast(self(), stop),
-    {reply, ok, State};
+handle_call(get_pid_of_top_pool_supervisor, _From, State) ->
+    #state{internal_directory = InternalDirectory} = State,
+    Reply = {ok, _Pid} = poolgirl_internal_directory:find(InternalDirectory, poolgirl_sup),
+    {reply, Reply, State};
 handle_call(_Msg, _From, State) ->
     Reply = {error, invalid_message},
     {reply, Reply, State}.
 
 %% @private
-handle_cast(init, #state{name = PoolName,
-                         parent = Parent,
-                         size = Size,
-                         workers = Workers0} = State) ->
-    % create the pg group
-    ok = poolgirl_pg:create(PoolName),
-    %% check if we were supplied with pre-started workers
-    case Workers0 of
-        [] ->
-            %% get the chilren of our supervisor
-            %% our brother is the worker supervisor
-            Children = supervisor:which_children(Parent),
-            {poolgirl_worker_sup, Sup, supervisor, [poolgirl_worker_sup]} =
-              lists:keyfind(poolgirl_worker_sup, 1, Children),
-            Workers = populate(Size, Sup, PoolName),
-            {noreply, State#state{supervisor = Sup,
-                                  workers = Workers}};
-        _ ->
-            lists:foreach(fun({_Ref, Pid}) ->
-                            % join the worker to the pg group
-                            ok = poolgirl_pg:join(PoolName, Pid)
-                          end, Workers0),
-            {noreply, State#state{supervisor = undefined,
-                                  workers = Workers0}}
-    end;
-handle_cast(stop, #state{name = PoolName,
-                         parent = Parent} = State) ->
-    poolgirl_pg:delete(PoolName),
-    ok = supervisor:terminate_child(poolgirl_app_sup, Parent),
-    {noreply, State};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 

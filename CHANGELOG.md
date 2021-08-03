@@ -9,11 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `rebar3_hank [Paulo Oliveira]
+- `rebar3_hank` [Paulo Oliveira]
 
 ### Changed
 
 - CI container approach to `setup-beam` with cache [Paulo Oliveira]
+- worker initialization as to make it synchronous with the pool's [Guilherme Andrade]
 
 ## [2.1.0] - 2021-03-04
 
