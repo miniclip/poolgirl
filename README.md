@@ -197,4 +197,4 @@ code_change(_OldVsn, State, _Extra) ->
 
 ## License
 
-Poolgirl is available under the MIT license (see `LICENSE`).
+Poolgirl is available under the MIT license (see [LICENSE](LICENSE)).

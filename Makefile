@@ -5,11 +5,11 @@ SHELL := bash
 MAKEFLAGS += --warn-undefined-variables
 MAKEFLAGS += --no-builtin-rules
 
-version: upgrade clean compile check test edoc
+version: upgrade clean compile check test
 .PHONY: version
 
-upgrade: upgrade-rebar3_lint upgrade-rebar3_hex upgrade-rebar3_hank
-	@rebar3 do unlock,upgrade
+upgrade: upgrade-rebar3_lint upgrade-rebar3_hex upgrade-rebar3_hank upgrade-rebar3_ex_doc
+	@rebar3 do unlock --all, upgrade --all
 .PHONY: upgrade
 
 upgrade-rebar3_lint:
@@ -23,6 +23,10 @@ upgrade-rebar3_hex:
 upgrade-rebar3_hank:
 	@rebar3 plugins upgrade rebar3_hank
 .PHONY: upgrade-rebar3_hank
+
+upgrade-rebar3_ex_doc:
+	@rebar3 plugins upgrade rebar3_ex_doc
+.PHONY: upgrade-rebar3_ex_doc
 
 clean:
 	@rebar3 clean -a
@@ -63,6 +67,6 @@ cover:
 	@rebar3 cover
 .PHONY: cover
 
-edoc:
-	@rebar3 edoc
-.PHONY: edoc
+ex_doc-dry:
+	@rebar3 hex publish docs --dry-run
+.PHONY: ex_doc-dry
