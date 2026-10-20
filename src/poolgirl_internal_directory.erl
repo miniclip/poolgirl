@@ -52,7 +52,7 @@ maybe_over_register(Directory, Name, ExistingPid) ->
 
 over_register(Directory, Name, ExistingPid) ->
     MatchSpec = over_registration_match_spec(Name, ExistingPid),
-    case _AmountReplaced = ets:select_replace(Directory, MatchSpec) of
+    case ets:select_replace(Directory, MatchSpec) of
         1 -> true;
         0 -> false
     end.

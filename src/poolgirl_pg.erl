@@ -10,6 +10,8 @@
 
 -type name() :: atom().
 
+-export_type([name/0]).
+
 %%%
 %%% Exported functions
 %%%
@@ -55,10 +57,11 @@ leave(Name, Pid) when is_pid(Pid) ->
 -spec get_members(Name) -> [pid()] | {error, {no_such_group, Name}}
       when Name :: name().
 get_members(Name) ->
-    case catch ets:lookup(Name, Name) of
+    try ets:lookup(Name, Name) of
         [] -> {error, {no_such_group, Name}};
-        [{Name, Members}] -> Members;
-        {'EXIT', _} -> []
+        [{Name, Members}] -> Members
+    catch
+        _:_ -> []
     end.
 
 -spec get(Name) ->  pid() | {error, Reason} when
@@ -71,7 +74,7 @@ get(Name) ->
         [Pid] -> Pid;
         Members when is_list(Members) ->
             {_, _, X} = os:timestamp(),
-            lists:nth((X rem length(Members))+1, Members);
+            lists:nth((X rem length(Members)) + 1, Members);
         Else ->
             Else
     end.

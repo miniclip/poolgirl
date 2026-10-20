@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - 2026-10-20
+
+### Changed
+
+- `rebar3_ex_doc` to 0.3.0 [Sergio Almeida]
+- `rebar3_hank` to 1.6.1 [Sergio Almeida]
+- `rebar3_hex` to 7.3.0 [Sergio Almeida]
+- `rebar3_lint` to 5.0.4 [Sergio Almeida]
+
+### Fixed
+
+- support OTP 29 by removing all case catch expressions [Sergio Almeida]
+- `elvis.config` by changing to the `elvis_core` 5.x format [Sergio Almeida]
+- CI to OTP 26 through 29 [Sergio Almeida]
+
+### Removed
+
+- support for OTP older than 26 [Sergio Almeida]
+
 ## [2.2.1] - 2022-04-19
 
 ### Added
