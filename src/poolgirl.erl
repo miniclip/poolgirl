@@ -114,7 +114,13 @@ checkin(_PoolId, Worker) when is_pid(Worker) -> ok.
     -> any().
 transaction(PoolId, Fun) ->
     Worker = poolgirl:checkout(PoolId),
-    catch Fun(Worker).
+    try
+        Fun(Worker)
+    catch
+        throw:Value -> Value;
+        exit:Reason -> {'EXIT', Reason};
+        error:Reason:Stacktrace -> {'EXIT', {Reason, Stacktrace}}
+    end.
 
 %% @doc Fetch the status of a pool
 %% @param PoolId The unique pool id
@@ -279,4 +285,4 @@ populate(N, Sup, PoolName, Acc) ->
     Ref = erlang:monitor(process, Pid),
     % join the worker to the pg2 group
     ok = poolgirl_pg:join(PoolName, Pid),
-    populate(N-1, Sup, PoolName, Acc ++ [{Ref, Pid}]).
+    populate(N - 1, Sup, PoolName, Acc ++ [{Ref, Pid}]).

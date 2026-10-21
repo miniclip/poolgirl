@@ -13,25 +13,26 @@ jobs:
     runs-on: ${{matrix.os}}
     strategy:
       matrix:
-        otp_vsn: [22, 23, 24]
+        otp_vsn: [26, 27, 28, 29]
         os: [ubuntu-latest]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: erlef/setup-beam@v1
         id: setup-beam
         with:
           otp-version: ${{matrix.otp_vsn}}
-          rebar3-version: '3.18'
+          rebar3-version: '3.27'
       - name: restore _build
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: _build
           key: _build-cache-for-os-${{runner.os}}-otp-${{steps.setup-beam.outputs.otp-version}}-rebar3-${{steps.setup-beam.outputs.rebar3-version}}-hash-${{hashFiles('rebar.lock')}}
       - name: restore rebar3's cache
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: ~/.cache/rebar3
           key: rebar3-cache-for-os-${{runner.os}}-otp-${{steps.setup-beam.outputs.otp-version}}-rebar3-${{steps.setup-beam.outputs.rebar3-version}}-hash-${{hashFiles('rebar.lock')}}
-      - run: make version
+      - run: make compile check test
       - run: make ex_doc-dry
-        if: ${{matrix.otp_vsn >= 24}}
+        # rebar3_ex_doc 0.3.0 ships no ex_doc escript for OTP 29
+        if: ${{matrix.otp_vsn == 28}}
