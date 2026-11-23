@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- CI to also run on pushes and pull requests to `develop` [Dinis Rosário]
 - project description to "A lightweight Erlang worker pool library", replacing sexist wording [Dinis Rosário]
 - edoc for the `poolgirl` module and the `poolgirl_worker` behaviour [Dinis Rosário]
 - README example to a statsd reporter that only uses casts, replacing the synchronous epgsql example [Dinis Rosário]
