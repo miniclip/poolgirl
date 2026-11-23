@@ -155,14 +155,20 @@ status(PoolId) ->
     gen_server:call(PoolId, status).
 
 %% @doc Adds or removes workers. The change applies at once.
+%%
+%% Raises a `no_supervisor' error for a pool started with `workers', because
+%% that pool has no supervisor to start or stop workers.
 %% @param UpOrDown `up' to add workers, `down' to remove them
 %% @param PoolId The pool name
 %% @param HowMany The number of workers to add or remove
 -spec spin(UpOrDown :: up | down, PoolId :: pool(), HowMany :: pos_integer()) -> ok.
 spin(up, PoolId, HowMany) ->
-    gen_server:call(PoolId, {spin_up, HowMany});
+    spin_reply(gen_server:call(PoolId, {spin_up, HowMany}));
 spin(down, PoolId, HowMany) ->
-    gen_server:call(PoolId, {spin_down, HowMany}).
+    spin_reply(gen_server:call(PoolId, {spin_down, HowMany})).
+
+spin_reply(ok) -> ok;
+spin_reply({error, Reason}) -> erlang:error(Reason).
 
 %% @doc Stops the pool and all its workers.
 %%
@@ -226,8 +232,13 @@ init([], _WorkerArgs, State) ->
     end.
 
 %% @private
+handle_call(status, _From, #state{supervisor = undefined, workers = Workers} = State) ->
+    {reply, {ready, length(Workers)}, State};
 handle_call(status, _From, #state{supervisor = Sup} = State) ->
     {reply, {ready, length(supervisor:which_children(Sup))}, State};
+handle_call({Spin, _N}, _From, #state{supervisor = undefined} = State)
+  when Spin =:= spin_up; Spin =:= spin_down ->
+    {reply, {error, no_supervisor}, State};
 handle_call({spin_up, N}, _From, #state{name = PoolName,
                                         size = Size,
                                         supervisor = Sup,

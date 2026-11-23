@@ -59,6 +59,9 @@ pool_test_() ->
             },
             {<<"Internal directory handles race conditions gracefully">>,
                 fun graceful_internal_directory_concurrency/0
+            },
+            {<<"Pool with pre-started workers survives status and spin">>,
+                fun pool_prestarted_workers/0
             }
         ]
     }.
@@ -213,6 +216,20 @@ independent_childspec_pool() ->
     ?assert(not lists:keymember(PoolPid, 2, supervisor:which_children(IntSupervisor))),
     ok = supervisor:terminate_child(ExtSupervisor, PoolId),
     ok = supervisor:delete_child(ExtSupervisor, PoolId).
+
+pool_prestarted_workers() ->
+    Workers = lists:map(fun(_) ->
+                            {ok, Pid} = poolgirl_test_worker:start_link([]),
+                            Pid
+                        end, lists:seq(1, 3)),
+    {ok, _} = poolgirl:start_link([{name, {local, poolgirl_test}},
+                                   {worker_module, poolgirl_test_worker},
+                                   {workers, Workers}]),
+    ?assertEqual({ready, 3}, poolgirl:status(poolgirl_test)),
+    ?assertError(no_supervisor, poolgirl:spin(up, poolgirl_test, 1)),
+    ?assertError(no_supervisor, poolgirl:spin(down, poolgirl_test, 1)),
+    ?assertEqual({ready, 3}, poolgirl:status(poolgirl_test)),
+    lists:foreach(fun(Pid) -> unlink(Pid), exit(Pid, kill) end, Workers).
 
 graceful_internal_directory_concurrency() ->
     _ = process_flag(trap_exit, true),
