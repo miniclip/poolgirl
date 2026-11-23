@@ -94,10 +94,14 @@ callback: `start_link(WorkerArgs)`. Each worker gets the `WorkerArgs` given to
 
 ## Example
 
-This example application uses Poolgirl and
-[epgsql](https://github.com/epgsql/epgsql) to run database connection pools.
-It uses synchronous calls to keep the example short. For synchronous work
-like this, poolboy is often the better fit (see "When not to use it").
+This example application reports statsd counters over UDP. Each worker owns a
+UDP socket and only handles casts, which is the workload Poolgirl is built for.
+It uses only `gen_udp` from kernel.
+
+`increment/2` does not check the result of `checkout/1`. If the pool has no
+workers or does not exist, `checkout/1` returns `no_process`, and
+`gen_server:cast/2` drops the message without an error. For stats, losing a
+counter is acceptable.
 
 ### example.app
 
@@ -105,27 +109,23 @@ like this, poolboy is often the better fit (see "When not to use it").
 {application, example, [
     {description, "An example application"},
     {vsn, "0.1"},
-    {applications, [kernel, stdlib, sasl, crypto, ssl]},
+    {applications, [kernel, stdlib, poolgirl]},
     {modules, [example, example_worker]},
-    {registered, [example]},
+    {registered, [example_sup]},
     {mod, {example, []}},
     {env, [
         {pools, [
-            {pool1, [
+            {stats, [
                 {size, 10}
             ], [
-                {hostname, "127.0.0.1"},
-                {database, "db1"},
-                {username, "db1"},
-                {password, "abc123"}
+                {host, "127.0.0.1"},
+                {port, 8125}
             ]},
-            {pool2, [
+            {analytics, [
                 {size, 5}
             ], [
-                {hostname, "127.0.0.1"},
-                {database, "db2"},
-                {username, "db2"},
-                {password, "abc123"}
+                {host, "127.0.0.1"},
+                {port, 8126}
             ]}
         ]}
     ]}
@@ -139,7 +139,7 @@ like this, poolboy is often the better fit (see "When not to use it").
 -behaviour(application).
 -behaviour(supervisor).
 
--export([start/0, stop/0, squery/2, equery/3]).
+-export([start/0, stop/0, increment/2]).
 -export([start/2, stop/1]).
 -export([init/1]).
 
@@ -164,15 +164,8 @@ init([]) ->
     end, Pools),
     {ok, {{one_for_one, 10, 10}, PoolSpecs}}.
 
-squery(PoolName, Sql) ->
-    poolgirl:transaction(PoolName, fun(Worker) ->
-        gen_server:call(Worker, {squery, Sql})
-    end).
-
-equery(PoolName, Stmt, Params) ->
-    poolgirl:transaction(PoolName, fun(Worker) ->
-        gen_server:call(Worker, {equery, Stmt, Params})
-    end).
+increment(PoolName, Metric) ->
+    gen_server:cast(poolgirl:checkout(PoolName), {increment, Metric}).
 ```
 
 ### example_worker.erl
@@ -186,41 +179,45 @@ equery(PoolName, Stmt, Params) ->
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
          code_change/3]).
 
--record(state, {conn}).
+-record(state, {socket, host, port}).
 
 start_link(Args) ->
     gen_server:start_link(?MODULE, Args, []).
 
 init(Args) ->
     process_flag(trap_exit, true),
-    Hostname = proplists:get_value(hostname, Args),
-    Database = proplists:get_value(database, Args),
-    Username = proplists:get_value(username, Args),
-    Password = proplists:get_value(password, Args),
-    {ok, Conn} = epgsql:connect(Hostname, Username, Password, [
-        {database, Database}
-    ]),
-    {ok, #state{conn=Conn}}.
+    Host = proplists:get_value(host, Args),
+    Port = proplists:get_value(port, Args),
+    {ok, Socket} = gen_udp:open(0),
+    {ok, #state{socket = Socket, host = Host, port = Port}}.
 
-handle_call({squery, Sql}, _From, #state{conn=Conn}=State) ->
-    {reply, epgsql:squery(Conn, Sql), State};
-handle_call({equery, Stmt, Params}, _From, #state{conn=Conn}=State) ->
-    {reply, epgsql:equery(Conn, Stmt, Params), State};
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
+handle_cast({increment, Metric}, #state{socket = Socket, host = Host,
+                                         port = Port} = State) ->
+    _ = gen_udp:send(Socket, Host, Port, [Metric, ":1|c"]),
+    {noreply, State};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
 handle_info(_Info, State) ->
     {noreply, State}.
 
-terminate(_Reason, #state{conn=Conn}) ->
-    ok = epgsql:close(Conn),
-    ok.
+terminate(_Reason, #state{socket = Socket}) ->
+    ok = gen_udp:close(Socket).
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
+```
+
+Usage:
+
+```erl-sh
+1> application:ensure_all_started(example).
+{ok,[poolgirl,example]}
+2> example:increment(stats, <<"page.views">>).
+ok
 ```
 
 ## Original Author
