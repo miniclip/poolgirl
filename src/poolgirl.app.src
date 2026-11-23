@@ -1,5 +1,5 @@
 {application, poolgirl, [
-    {description, "A sexy Erlang worker pool factory"},
+    {description, "A lightweight Erlang worker pool library"},
     {vsn, git},
     {registered, []},
     {mod, {poolgirl_app, []}},
