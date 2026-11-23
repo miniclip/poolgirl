@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.1] - 2026-11-23
+
+### Fixed
+
+- CHANGELOG wording [Dinis Rosário]
+
 ## [3.1.0] - 2026-11-23
 
 ### Added
@@ -15,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - CI to also run on pushes and pull requests to `develop` [Dinis Rosário]
 - CI actions to `actions/checkout@v7` and `actions/cache@v6`, which run on Node.js 24 [Dinis Rosário]
-- project description to "A lightweight Erlang worker pool library", replacing sexist wording [Dinis Rosário]
+- project description to "A lightweight Erlang worker pool library" [Dinis Rosário]
 - edoc for the `poolgirl` module and the `poolgirl_worker` behaviour [Dinis Rosário]
 - README example to a statsd reporter that only uses casts, replacing the synchronous epgsql example [Dinis Rosário]
 - `checkout/1` to keep pool members in a tuple and pick with `erlang:phash2/2` over `erlang:unique_integer/0`. It is 3x faster at 200 to 400 workers, scales across schedulers and spreads back-to-back calls evenly [Dinis Rosário]
