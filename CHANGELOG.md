@@ -18,11 +18,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - project description to "A lightweight Erlang worker pool library", replacing sexist wording [Dinis Rosário]
 - edoc for the `poolgirl` module and the `poolgirl_worker` behaviour [Dinis Rosário]
 - README example to a statsd reporter that only uses casts, replacing the synchronous epgsql example [Dinis Rosário]
+- `checkout/1` to keep pool members in a tuple and pick with `erlang:phash2/2` over `erlang:unique_integer/0`. It is 3x faster at 200 to 400 workers, scales across schedulers and spreads back-to-back calls evenly [Dinis Rosário]
 
 ### Fixed
 
 - README errors: pg2 mention, `checkin/2` arity, `size` meaning, missing options and API functions [Dinis Rosário]
 - `status/1` and `spin/3` crashing a pool started with `workers`. `status/1` now returns the worker count, and `spin/3` raises a `no_supervisor` error [Dinis Rosário]
+- `spin/3` never removing workers that replaced dead ones, because the manager did not track them [Dinis Rosário]
+- `spin(down, ...)` starting a replacement for a victim that died just before the spin, and not lowering the pool size [Dinis Rosário]
 
 ## [3.0.0] - 2026-10-21
 

@@ -246,16 +246,19 @@ handle_call({spin_up, N}, _From, #state{name = PoolName,
     NewWorkers = populate(N, Sup, PoolName),
     {reply, ok, State#state{size = Size + N, workers = Workers ++ NewWorkers}};
 handle_call({spin_down, N}, _From, #state{name = PoolName,
+                                          size = Size,
                                           supervisor = Sup,
                                           workers = Workers} = State) ->
     % get a sublist of workers to spin down
     Victims = lists:sublist(Workers, N),
     lists:foreach(fun({WorkerRef, WorkerPid}) ->
-                    erlang:demonitor(WorkerRef),
+                    % flush: a victim that has just died must not get a replacement
+                    erlang:demonitor(WorkerRef, [flush]),
                     kill_worker(Sup, WorkerPid),
                     poolgirl_pg:leave(PoolName, WorkerPid)
                   end, Victims),
-    {reply, ok, State#state{workers = Workers -- Victims}};
+    {reply, ok, State#state{size = Size - length(Victims),
+                            workers = Workers -- Victims}};
 handle_call(get_pid_of_top_pool_supervisor, _From, State) ->
     #state{internal_directory = InternalDirectory} = State,
     Reply = {ok, _Pid} = poolgirl_internal_directory:find(InternalDirectory, poolgirl_sup),
@@ -290,7 +293,7 @@ handle_info({'DOWN', Ref, process, Pid, _Reason},
     NewWorker = {NewRef, NewPid},
     % join the worker to the pg2 group
     ok = poolgirl_pg:join(PoolName, NewPid),
-    {noreply, State#state{workers = Workers -- [{Ref, Pid}] ++ [NewWorker]}};
+    {noreply, State#state{workers = (Workers -- [{Ref, Pid}]) ++ [NewWorker]}};
 handle_info(_Info, State) ->
     {noreply, State}.
 

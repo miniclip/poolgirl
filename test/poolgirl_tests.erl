@@ -62,6 +62,12 @@ pool_test_() ->
             },
             {<<"Pool with pre-started workers survives status and spin">>,
                 fun pool_prestarted_workers/0
+            },
+            {<<"Pool spins down replacement workers">>,
+                fun pool_spin_down_replacement/0
+            },
+            {<<"Pool does not replace a spun down worker that had just died">>,
+                fun pool_spin_down_dead_victim/0
             }
         ]
     }.
@@ -92,6 +98,54 @@ worker_death() ->
     timer:sleep(1000),
     ?assertEqual(5, length(poolgirl:get_workers(Pid))),
     ok = poolgirl:stop(Pid).
+
+pool_spin_down_replacement() ->
+    {ok, Pool} = new_pool(2),
+    Dead = poolgirl:checkout(Pool),
+    kill_worker(Dead),
+    ok = wait_for_replacement(Pool, Dead, 2, 100),
+    ok = poolgirl:spin(down, Pool, 2),
+    ?assertEqual([], poolgirl:get_workers(Pool)).
+
+pool_spin_down_dead_victim() ->
+    {ok, Pool} = new_pool(2),
+    [Oldest, _] = poolgirl:get_workers(Pool),
+    Manager = whereis(Pool),
+    ok = sys:suspend(Manager),
+    Self = self(),
+    _ = spawn(fun() -> Self ! {spun, poolgirl:spin(down, Pool, 1)} end),
+    ok = wait_for_queue(Manager, 1, 100),
+    %% the victim dies while the spin down call waits in the queue,
+    %% so its 'DOWN' is queued behind the call
+    kill_worker(Oldest),
+    ok = wait_for_queue(Manager, 2, 100),
+    ok = sys:resume(Manager),
+    receive {spun, ok} -> ok end,
+    %% the manager has handled the 'DOWN' once this call returns
+    _ = poolgirl:status(Pool),
+    ?assertEqual(1, length(poolgirl:get_workers(Pool))).
+
+wait_for_queue(Pid, Len, 0) ->
+    ?assertMatch({message_queue_len, Len}, erlang:process_info(Pid, message_queue_len));
+wait_for_queue(Pid, Len, Retries) ->
+    case erlang:process_info(Pid, message_queue_len) of
+        {message_queue_len, Len} -> ok;
+        _ -> timer:sleep(10), wait_for_queue(Pid, Len, Retries - 1)
+    end.
+
+%% The dead pid stays listed until the manager handles its 'DOWN',
+%% so wait for it to go and for the count to be back to Size.
+wait_for_replacement(Pool, Dead, Size, 0) ->
+    ?assertEqual({false, Size}, replacement_state(Pool, Dead));
+wait_for_replacement(Pool, Dead, Size, Retries) ->
+    case replacement_state(Pool, Dead) of
+        {false, Size} -> ok;
+        _ -> timer:sleep(10), wait_for_replacement(Pool, Dead, Size, Retries - 1)
+    end.
+
+replacement_state(Pool, Dead) ->
+    Workers = poolgirl:get_workers(Pool),
+    {lists:member(Dead, Workers), length(Workers)}.
 
 pool_returns_status() ->
     {ok, Pool} = new_pool(2),
