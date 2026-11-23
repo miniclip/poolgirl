@@ -64,7 +64,8 @@ the node where the pool runs.
 - `get_workers(Pool)`: returns the list of worker pids.
 - `status(Pool)`: returns `{ready, NumberOfWorkers}`.
 - `spin(up | down, Pool, N)`: adds or removes `N` workers. The change applies
-  at once.
+  at once. For a pool started with `workers`, it raises a `no_supervisor`
+  error.
 - `child_spec(PoolId, PoolArgs)` and `child_spec(PoolId, PoolArgs, WorkerArgs)`:
   return a child spec to start the pool under your own supervisor.
 - `start_link(PoolArgs)` and `start_link(PoolArgs, WorkerArgs)`: start the pool
