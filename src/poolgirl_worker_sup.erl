@@ -1,5 +1,5 @@
 %% @private
-%% Poolbgirl - A sexy Erlang worker pool factory
+%% Poolgirl - A lightweight Erlang worker pool library
 
 -module(poolgirl_worker_sup).
 -behaviour(supervisor).

@@ -1,65 +1,102 @@
-# poolgirl - A sexy Erlang worker pool factory [![GitHub Actions CI][ci-img]][ci]
+# poolgirl - A lightweight Erlang worker pool library [![GitHub Actions CI][ci-img]][ci]
 
 [ci]: https://github.com/miniclip/poolgirl
 [ci-img]: https://github.com/miniclip/poolgirl/workflows/build/badge.svg
 
-Poolgirl is a **lightweight**, **generic** pooling library for Erlang with a
-focus on **simplicity**, **performance**, and **rock-solid** disaster recovery.
-Poolgirl is Poolboy's little sister, it's directed towards the use-case of simple
-workers that process requests with no need for a reply (ie. that only handle cast
-requests)
+Poolgirl is a small, generic worker pool library for Erlang. It is an
+alternative to [poolboy](https://github.com/devinus/poolboy) for workers that
+take cast requests, need no reply, and handle each request quickly. Analytics
+and stats reporting are typical cases.
+
+The API and the options are close to poolboy's, so switching between the two
+takes little work.
 
 ## Usage
 
 ```erl-sh
 1> Worker = poolgirl:checkout(PoolName).
 <0.9001.0>
-2> gen_server:call(Worker, Request).
+2> gen_server:cast(Worker, Request).
 ok
 ```
 
-Q: Is this in any way related with poolboy?
-A: Yes, the interface and configuration is mostly the same, however poolgirl adds
-some additional methods.
+## How it works
 
-Q: So what's the difference, why another worker pool manager?
-A: Poolboy's manager of workers is a single gen_server process, in pools with a
-large number of workers the manager itself can become a bottleneck, a possible
-solution is to have multiple managers and load balance these.
-In use-case scenarios where the pool workers only handle cast requests and have a
-fast execution time per request (eg. analytics reporting, stats reporting) poolgirl
-overcomes this issue and lets you have high worker numbers with no additional overhead.
+Poolboy uses one manager process per pool. Each checkout sends a message to
+it, so with many workers the manager can become a bottleneck.
 
-Q: How does it work under the hood?
-A: When a client requests a worker from the pool no messages are sent to any other
-process in order to accomplish this, poolgirl accesses a pg2 process group and recruits
-a random worker.
+Poolgirl takes the manager out of the checkout path. Each pool has a public
+ETS table with the same name as the pool, and the table holds the pids of the
+pool's workers. `checkout/1` reads this table in the calling process and picks
+a worker at random. It sends no message to any process. `checkin/2` does
+nothing. It exists only to make a move from poolboy easier.
 
-Q: But won't that overload the workers message queue? You're basically choosing a
-worker at random.
-A: That is true, hence the fact the poolgirl is best suited to the use-case described
-above, if you're making long synchronous requests to workers then you're probably
-better off sticking with poolboy.
+The manager still starts the workers and monitors them. When a worker dies,
+the manager removes it from the table and starts a replacement.
 
-Q: So if it's the client that recruits the worker what does the checkin operation
-do?
-A: Nothing, it's there basically to ease the transition between poolboy <-> poolgirl
+Each pool runs under its own supervision tree:
+
+```
+poolgirl_sup (rest_for_one)
+├── poolgirl_worker_sup (simple_one_for_one, the workers)
+└── poolgirl (gen_server, the pool manager, owns the ETS table)
+```
+
+## When not to use it
+
+Workers are picked at random. Poolgirl does not check whether a worker is busy,
+so a slow worker's message queue can grow. If your workers handle long
+synchronous requests, use poolboy.
+
+The ETS table is local to the node, so `checkout/1` only returns workers from
+the node where the pool runs.
 
 ## API
 
-- `checkout/1`: recruits a worker from the requested pool
-- `checkin/1`: does nothing
-- `transaction/2`: recruits a worker from the requested pool and executes a funcion
-with the worker pid as argument
-- `get_workers/1`: returns a list of worker pids
-- `status/1`: returns the pool status
-- `spin/3`: spins up/down pool workers, these are immediately added/removed from
-the worker pool
+- `checkout(Pool)`: returns a random worker pid, or `no_process` if the pool
+  has no workers or does not exist.
+- `checkin(Pool, Worker)`: does nothing and returns `ok`.
+- `transaction(Pool, Fun)`: checks out a worker and calls `Fun(Worker)`.
+  Exceptions do not propagate: a throw returns the thrown value, an exit
+  returns `{'EXIT', Reason}` and an error returns
+  `{'EXIT', {Reason, Stacktrace}}`. If the pool has no workers, `Fun` gets
+  `no_process`.
+- `get_workers(Pool)`: returns the list of worker pids.
+- `status(Pool)`: returns `{ready, NumberOfWorkers}`.
+- `spin(up | down, Pool, N)`: adds or removes `N` workers. The change applies
+  at once.
+- `child_spec(PoolId, PoolArgs)` and `child_spec(PoolId, PoolArgs, WorkerArgs)`:
+  return a child spec to start the pool under your own supervisor.
+- `start_link(PoolArgs)` and `start_link(PoolArgs, WorkerArgs)`: start the pool
+  under the `poolgirl` application's supervisor. The `poolgirl` application
+  must be running.
+- `stop(Pool)`: stops the pool and all its workers. A pool from `child_spec/2,3`
+  is a `permanent` child, so your supervisor restarts it.
+
+## Options
+
+- `name`: the pool name, as `{local, Name}`, `{global, Name}` or
+  `{via, Module, Name}`. `Name` must be an atom, and it is also the name of the
+  pool's ETS table.
+- `worker_module`: the module that implements the workers.
+- `size`: the number of workers to start. The default is 5. Use `spin/3` to
+  change it later.
+- `workers`: a list of pids that are already running, to use instead of
+  starting new workers. The pool monitors them, but it does not replace one
+  that dies.
+
+## Worker modules
+
+A worker module implements the `poolgirl_worker` behaviour, which has one
+callback: `start_link(WorkerArgs)`. Each worker gets the `WorkerArgs` given to
+`child_spec/3` or `start_link/2`.
 
 ## Example
 
-This is an example application showcasing database connection pools using
-Poolgirl and [epgsql](https://github.com/epgsql/epgsql).
+This example application uses Poolgirl and
+[epgsql](https://github.com/epgsql/epgsql) to run database connection pools.
+It uses synchronous calls to keep the example short. For synchronous work
+like this, poolboy is often the better fit (see "When not to use it").
 
 ### example.app
 
@@ -184,12 +221,6 @@ terminate(_Reason, #state{conn=Conn}) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 ```
-
-## Options
-
-- `name`: the pool name
-- `worker_module`: the module that represents the workers
-- `size`: maximum pool size
 
 ## Original Author
 

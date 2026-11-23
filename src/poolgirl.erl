@@ -1,5 +1,10 @@
-%% Poolgirl - A sexy Erlang worker pool factory
+%% Poolgirl - A lightweight Erlang worker pool library
 
+%% @doc The pool API, and the pool manager process.
+%%
+%% `checkout/1' picks a random worker from a public ETS table that has the
+%% same name as the pool. It sends no message to the pool manager, so it is
+%% best for workers that take casts and handle each request quickly.
 -module(poolgirl).
 -behaviour(gen_server).
 
@@ -50,16 +55,21 @@
 
 -hank([{unnecessary_function_arguments, [checkin/2]}]).
 
-%% @doc The same as child_spec/3 with no configuration options
+%% @doc The same as `child_spec(PoolId, PoolArgs, [])'.
 -spec child_spec(PoolId :: term(), PoolArgs :: proplists:proplist())
     -> supervisor:child_spec().
 child_spec(PoolId, PoolArgs) ->
     child_spec(PoolId, PoolArgs, []).
 
-%% @doc The pool spec to use under your supervision tree
-%% @param PoolId The unique pool id
-%% @param PoolArgs The pool's configuration options
-%% @param WorkerArgs The pool's worker's configuration options
+%% @doc Returns a child spec to start the pool under your own supervisor.
+%%
+%% The child is `permanent'. The `poolgirl' application does not supervise
+%% this pool.
+%% @param PoolId The child id in your supervisor
+%% @param PoolArgs The pool options: `name', `worker_module', `size' and
+%% `workers'
+%% @param WorkerArgs The argument that each worker gets in
+%% `WorkerModule:start_link/1'
 -spec child_spec(PoolId :: term(),
                  PoolArgs :: proplists:proplist(),
                  WorkerArgs :: proplists:proplist())
@@ -68,13 +78,21 @@ child_spec(PoolId, PoolArgs, WorkerArgs) ->
     {PoolId, {poolgirl_sup, start_link, [PoolArgs, WorkerArgs]},
      permanent, 5000, supervisor, [poolgirl]}.
 
-%% @private
+%% @doc The same as `start_link(PoolArgs, [])'.
 -spec start_link(PoolArgs :: proplists:proplist())
     -> start_ret().
 start_link(PoolArgs)  ->
     start_link(PoolArgs, []).
 
-%% @private
+%% @doc Starts the pool under the `poolgirl' application's supervisor.
+%%
+%% The `poolgirl' application must be running. On success, the returned pid is
+%% the pool's top supervisor, not the pool manager. Use the pool name with the
+%% other functions.
+%% @param PoolArgs The pool options: `name', `worker_module', `size' and
+%% `workers'
+%% @param WorkerArgs The argument that each worker gets in
+%% `WorkerModule:start_link/1'
 -spec start_link(PoolArgs :: proplists:proplist(),
                  WorkerArgs :: proplists:proplist())
     -> start_ret().
@@ -94,8 +112,11 @@ start_link2(InternalDirectory, PoolArgs, WorkerArgs) ->
             gen_server:start_link(PoolName, ?MODULE, {InternalDirectory, PoolArgs, WorkerArgs}, [])
     end.
 
-%% @doc Fetch a worker from a pool
-%% @param PoolId The unique pool id
+%% @doc Returns a random worker from the pool.
+%%
+%% Returns `no_process' if the pool has no workers or does not exist.
+%% It only finds pools on the local node.
+%% @param PoolId The pool name
 -spec checkout(PoolId :: pool()) -> no_process | pid().
 checkout(PoolId) ->
     case poolgirl_pg:get(PoolId) of
@@ -103,13 +124,18 @@ checkout(PoolId) ->
         Pid -> Pid
     end.
 
-%% @doc This function exists for compatibility with <code>poolboy</code> only
+%% @doc Does nothing. It exists only for compatibility with `poolboy'.
 -spec checkin(PoolId :: pool(), Worker :: pid()) -> ok.
 checkin(_PoolId, Worker) when is_pid(Worker) -> ok.
 
-%% @doc Execute your function in the context of a pool worker
-%% @param PoolId The unique pool id
-%% @param Fun A (catch-protected) function (taking a worker as input) to execute
+%% @doc Checks out a worker and calls `Fun(Worker)'.
+%%
+%% Exceptions from `Fun' do not propagate. A throw returns the thrown value, an
+%% exit returns `{'EXIT', Reason}' and an error returns
+%% `{'EXIT', {Reason, Stacktrace}}'. If the pool has no workers, `Fun' gets
+%% `no_process'.
+%% @param PoolId The pool name
+%% @param Fun The function to call with the worker pid
 -spec transaction(PoolId :: pool(), Fun :: fun((Worker :: pid()) -> any()))
     -> any().
 transaction(PoolId, Fun) ->
@@ -122,31 +148,34 @@ transaction(PoolId, Fun) ->
         error:Reason:Stacktrace -> {'EXIT', {Reason, Stacktrace}}
     end.
 
-%% @doc Fetch the status of a pool
-%% @param PoolId The unique pool id
+%% @doc Returns `{ready, N}', where `N' is the number of workers.
+%% @param PoolId The pool name
 -spec status(PoolId :: pool()) -> {atom(), integer()}.
 status(PoolId) ->
     gen_server:call(PoolId, status).
 
-%% @doc Change your pool's size
-%% @param UpOrDown The size direction (up or down)
-%% @param PoolId The unique pool id
-%% @param N The number of workers to assign to the pool (increment or decrement)
+%% @doc Adds or removes workers. The change applies at once.
+%% @param UpOrDown `up' to add workers, `down' to remove them
+%% @param PoolId The pool name
+%% @param HowMany The number of workers to add or remove
 -spec spin(UpOrDown :: up | down, PoolId :: pool(), HowMany :: pos_integer()) -> ok.
 spin(up, PoolId, HowMany) ->
     gen_server:call(PoolId, {spin_up, HowMany});
 spin(down, PoolId, HowMany) ->
     gen_server:call(PoolId, {spin_down, HowMany}).
 
-%% @doc Kill your pool
-%% @param PoolId The unique pool id
+%% @doc Stops the pool and all its workers.
+%%
+%% A pool from `child_spec/2,3' is a `permanent' child, so your supervisor
+%% restarts it.
+%% @param PoolId The pool name
 -spec stop(PoolId :: pool()) -> ok.
 stop(PoolId) ->
     {ok, TopSupPid} = gen_server:call(PoolId, get_pid_of_top_pool_supervisor),
     sys:terminate(TopSupPid, _Reason = shutdown).
 
-%% @doc List your pool's workers
-%% @param PoolId The unique pool id
+%% @doc Returns the pids of the pool's workers.
+%% @param PoolId The pool name
 -spec get_workers(PoolId :: pool()) -> list().
 get_workers(PoolId) ->
     poolgirl_pg:get_members(PoolId).

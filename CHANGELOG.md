@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- edoc for `start_link/1,2`, which are now part of the documented API [Dinis Rosário]
+
+### Changed
+
+- project description to "A lightweight Erlang worker pool library", replacing sexist wording [Dinis Rosário]
+- edoc for the `poolgirl` module and the `poolgirl_worker` behaviour [Dinis Rosário]
+
+### Fixed
+
+- README errors: pg2 mention, `checkin/2` arity, `size` meaning, missing options and API functions [Dinis Rosário]
+
 ## [3.0.0] - 2026-10-21
 
 ### Changed
