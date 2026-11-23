@@ -62,6 +62,9 @@ pool_test_() ->
             },
             {<<"Pool with pre-started workers survives status and spin">>,
                 fun pool_prestarted_workers/0
+            },
+            {<<"Pool spins down replacement workers">>,
+                fun pool_spin_down_replacement/0
             }
         ]
     }.
@@ -92,6 +95,28 @@ worker_death() ->
     timer:sleep(1000),
     ?assertEqual(5, length(poolgirl:get_workers(Pid))),
     ok = poolgirl:stop(Pid).
+
+pool_spin_down_replacement() ->
+    {ok, Pool} = new_pool(2),
+    Dead = poolgirl:checkout(Pool),
+    kill_worker(Dead),
+    ok = wait_for_replacement(Pool, Dead, 2, 100),
+    ok = poolgirl:spin(down, Pool, 2),
+    ?assertEqual([], poolgirl:get_workers(Pool)).
+
+%% The dead pid stays listed until the manager handles its 'DOWN',
+%% so wait for it to go and for the count to be back to Size.
+wait_for_replacement(Pool, Dead, Size, 0) ->
+    ?assertEqual({false, Size}, replacement_state(Pool, Dead));
+wait_for_replacement(Pool, Dead, Size, Retries) ->
+    case replacement_state(Pool, Dead) of
+        {false, Size} -> ok;
+        _ -> timer:sleep(10), wait_for_replacement(Pool, Dead, Size, Retries - 1)
+    end.
+
+replacement_state(Pool, Dead) ->
+    Workers = poolgirl:get_workers(Pool),
+    {lists:member(Dead, Workers), length(Workers)}.
 
 pool_returns_status() ->
     {ok, Pool} = new_pool(2),

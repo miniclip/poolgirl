@@ -290,7 +290,7 @@ handle_info({'DOWN', Ref, process, Pid, _Reason},
     NewWorker = {NewRef, NewPid},
     % join the worker to the pg2 group
     ok = poolgirl_pg:join(PoolName, NewPid),
-    {noreply, State#state{workers = Workers -- [{Ref, Pid}] ++ [NewWorker]}};
+    {noreply, State#state{workers = (Workers -- [{Ref, Pid}]) ++ [NewWorker]}};
 handle_info(_Info, State) ->
     {noreply, State}.
 
